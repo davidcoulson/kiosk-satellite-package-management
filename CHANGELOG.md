@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026.09.11.01
+
+- Switch to date-based versioning (`YYYY.MM.DD.NN`), matching this author's other projects.
+- Metadata only otherwise: author field and AI-assisted note in the README.
+
 ## 0.1.0
 
 - Install an APK from an HTTPS URL, streamed directly into a root `pm install -S -r -d`, no local file staging.
