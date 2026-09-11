@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "package-management",
   "name": "Package Management",
-  "version": "2026.09.11.01",
+  "version": "0.1.1-20260911",
   "minAndroidSdk": 24,
   "entryClass": "me.jxl.kiosk.plugins.packagemanagement.PackageManagementPlugin",
   "description": "Install or uninstall an APK by URL, update the panel's System WebView, and neutralize intrusive vendor packages. Requires root; no vendor signature pinning or auto-update machinery — you choose what to install.",
