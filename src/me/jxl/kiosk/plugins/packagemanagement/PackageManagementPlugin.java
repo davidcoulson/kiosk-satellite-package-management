@@ -73,7 +73,7 @@ public final class PackageManagementPlugin implements KioskPlugin {
                     break;
                 }
                 case "uninstallPackage": {
-                    runUninstall(str(settings.get("uninstallPackage")));
+                    runUninstall(effectiveUninstallTarget());
                     break;
                 }
                 case "updateWebView": {
@@ -155,8 +155,23 @@ public final class PackageManagementPlugin implements KioskPlugin {
      *  force-stopped, disabled from relaunching, and denied the overlay
      *  permission; packages removed from the list are re-enabled and
      *  re-allowed. One shell script per apply, covering every change. */
+    /** The package **Uninstall package** acts on: the typed one when the
+     *  text field holds anything, otherwise the dropdown's pick. Text wins
+     *  deliberately — uninstall is destructive and one-shot, so if someone
+     *  has typed a specific target, that is unambiguously what they meant;
+     *  silently uninstalling a dropdown leftover instead would be the worst
+     *  possible surprise. (Tame merges its two sources instead of choosing,
+     *  because taming is reversible and additive — see mergeTameSources.) */
+    private String effectiveUninstallTarget() {
+        String typed = str(settings.get("uninstallPackage"));
+        if (!typed.isEmpty()) return typed;
+        String picked = str(settings.get("uninstallPreset"));
+        return TamePresets.NONE.equals(picked) ? "" : picked;
+    }
+
     private void reconcileTame() {
-        List<String> desired = PackageManagementMath.parseTameList(
+        List<String> desired = PackageManagementMath.mergeTameSources(
+            TamePresets.packagesFor(str(settings.get("tamePreset"))),
             (String) settings.getOrDefault("tameVendorPackages", ""));
         List<String> toTame = new ArrayList<>(desired);
         toTame.removeAll(previousTameList);

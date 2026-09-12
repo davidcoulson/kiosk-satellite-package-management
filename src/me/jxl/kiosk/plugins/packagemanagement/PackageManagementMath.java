@@ -84,4 +84,30 @@ final class PackageManagementMath {
         }
         return result;
     }
+
+    /** The effective tame list: a dropdown preset's packages plus whatever
+     *  the free-text field holds. Additive by design — picking a preset
+     *  must never silently drop packages someone typed by hand, since the
+     *  text field is the only way to express anything the presets don't
+     *  cover. Preset entries come first (they're the "known" set), then
+     *  custom ones, deduplicated across both. Every entry still goes
+     *  through the same validation and critical-package filtering as
+     *  {@link #parseTameList}, so a preset can't smuggle in something the
+     *  text field would have been refused. */
+    static List<String> mergeTameSources(List<String> presetPackages, String rawCustom) {
+        List<String> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        if (presetPackages != null) {
+            for (String token : presetPackages) {
+                if (token == null || token.isEmpty()) continue;
+                if (!isValidPackageName(token)) continue;
+                if (isCritical(token)) continue;
+                if (seen.add(token)) result.add(token);
+            }
+        }
+        for (String token : parseTameList(rawCustom)) {
+            if (seen.add(token)) result.add(token);
+        }
+        return result;
+    }
 }

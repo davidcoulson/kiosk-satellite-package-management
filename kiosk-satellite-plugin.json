@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "package-management",
   "name": "Package Management",
-  "version": "0.1.1-20260911",
+  "version": "0.2.0",
   "minAndroidSdk": 24,
   "entryClass": "me.jxl.kiosk.plugins.packagemanagement.PackageManagementPlugin",
   "description": "Install or uninstall an APK by URL, update the panel's System WebView, and neutralize intrusive vendor packages. Requires root; no vendor signature pinning or auto-update machinery — you choose what to install.",
@@ -20,10 +20,28 @@
       "group": "Install"
     },
     {
+      "key": "uninstallPreset",
+      "type": "select",
+      "title": "Uninstall: pick a known package",
+      "description": "Common vendor/test packages, so you don't have to type one. Run the Uninstall package action to apply. Anything typed into the field below takes priority over this pick. Uninstalling is not reversible without a factory reset or reflash — prefer taming if you only want an app to stop interfering.",
+      "options": [
+        "None",
+        "com.elclcd.otaupdater",
+        "com.elclcd.commonkeepalive",
+        "com.DeviceTest",
+        "com.elc.smt_test",
+        "com.cghs.stresstest",
+        "com.smatek.test",
+        "com.tuya.devicetest"
+      ],
+      "default": "None",
+      "group": "Uninstall"
+    },
+    {
       "key": "uninstallPackage",
       "type": "string",
       "title": "Package to uninstall",
-      "description": "Exact package ID, e.g. com.example.app. Trigger the Uninstall action below. Only removable (non-system, non-critical) packages can be uninstalled.",
+      "description": "Overrides the dropdown above when non-empty. Use for anything not listed there.",
       "default": "",
       "group": "Uninstall"
     },
@@ -36,12 +54,27 @@
       "group": "WebView"
     },
     {
+      "key": "tamePreset",
+      "type": "select",
+      "title": "Tame: preset bundle",
+      "description": "One-click bundles of vendor packages known to interfere with kiosk use. Applied in addition to the list below, not instead of it. Taming is reversible: clearing this re-enables whatever it disabled. Entries marked unverified come from ha-paneld's hardware notes and were not confirmed on a panel here — a name that doesn't exist on your model is simply skipped.",
+      "options": [
+        "None",
+        "elclcd panels: OTA updater + keepalive",
+        "Factory test apps (verified on test panels)",
+        "SmartOS/xinch vendor apps (documented, unverified)",
+        "Tuya test app (documented, unverified)"
+      ],
+      "default": "None",
+      "group": "Tame"
+    },
+    {
       "key": "tameVendorPackages",
       "type": "string",
       "title": "Tamed vendor packages",
-      "description": "Space or comma separated package IDs to force-stop, block from relaunching on boot, and strip the floating-window permission from. Applied automatically whenever this list changes. Remove a package here to restore it. Core Android, Kiosk Satellite and this plugin can never be listed.",
+      "description": "Extra packages to tame, space or comma separated. Added to the preset above. Critical system packages are always refused.",
       "default": "",
-      "group": "Tame vendor packages"
+      "group": "Tame"
     },
     {
       "key": "simulation",
