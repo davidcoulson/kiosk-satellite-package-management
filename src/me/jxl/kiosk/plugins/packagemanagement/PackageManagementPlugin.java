@@ -77,7 +77,7 @@ public final class PackageManagementPlugin implements KioskPlugin {
                     break;
                 }
                 case "updateWebView": {
-                    String url = str(settings.get("webviewUrl"));
+                    String url = effectiveWebViewUrl();
                     runInstall(url, "System WebView");
                     break;
                 }
@@ -151,10 +151,6 @@ public final class PackageManagementPlugin implements KioskPlugin {
             : "Uninstall failed — the package may be a non-removable system app.", !ok);
     }
 
-    /** Applies the tame list's full effect: newly listed packages get
-     *  force-stopped, disabled from relaunching, and denied the overlay
-     *  permission; packages removed from the list are re-enabled and
-     *  re-allowed. One shell script per apply, covering every change. */
     /** The package **Uninstall package** acts on: the typed one when the
      *  text field holds anything, otherwise the dropdown's pick. Text wins
      *  deliberately — uninstall is destructive and one-shot, so if someone
@@ -166,12 +162,27 @@ public final class PackageManagementPlugin implements KioskPlugin {
         String typed = str(settings.get("uninstallPackage"));
         if (!typed.isEmpty()) return typed;
         String picked = str(settings.get("uninstallPreset"));
-        return TamePresets.NONE.equals(picked) ? "" : picked;
+        return TameCatalog.NONE.equals(picked) ? "" : picked;
     }
 
+    /** The WebView APK to install: the typed URL when the field holds
+     *  anything, otherwise the URL the dropdown pick maps to. Text wins for
+     *  the same reason it does on uninstall — an explicitly typed target is
+     *  unambiguous, and a leftover dropdown pick silently overriding it
+     *  would replace the component that renders the dashboard. */
+    private String effectiveWebViewUrl() {
+        String typed = str(settings.get("webviewUrl"));
+        if (!typed.isEmpty()) return typed;
+        return WebViewPresets.urlFor(str(settings.get("webviewPreset")));
+    }
+
+    /** Applies the tame list's full effect: newly listed packages get
+     *  force-stopped, disabled from relaunching, and denied the overlay
+     *  permission; packages removed from the list are re-enabled and
+     *  re-allowed. One shell script per apply, covering every change. */
     private void reconcileTame() {
         List<String> desired = PackageManagementMath.mergeTameSources(
-            TamePresets.packagesFor(str(settings.get("tamePreset"))),
+            TameCatalog.selectedPackages(settings),
             (String) settings.getOrDefault("tameVendorPackages", ""));
         List<String> toTame = new ArrayList<>(desired);
         toTame.removeAll(previousTameList);

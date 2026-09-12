@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "package-management",
   "name": "Package Management",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minAndroidSdk": 24,
   "entryClass": "me.jxl.kiosk.plugins.packagemanagement.PackageManagementPlugin",
   "description": "Install or uninstall an APK by URL, update the panel's System WebView, and neutralize intrusive vendor packages. Requires root; no vendor signature pinning or auto-update machinery — you choose what to install.",
@@ -32,6 +32,8 @@
         "com.elc.smt_test",
         "com.cghs.stresstest",
         "com.smatek.test",
+        "com.smartos.xinch.setting",
+        "com.smartos.xinch.hardware",
         "com.tuya.devicetest"
       ],
       "default": "None",
@@ -46,33 +48,105 @@
       "group": "Uninstall"
     },
     {
+      "key": "webviewPreset",
+      "type": "select",
+      "title": "System WebView: known-good build",
+      "description": "Builds ha-paneld verified on real panels and mirrors as durable release assets, for panels with no Google Play and therefore no WebView update path. Pick the one matching this panel's ABI and Android version — a mismatch fails the install rather than damaging anything, but WebView renders the dashboard, so confirm the panel still loads afterwards. These are LineageOS/Cromite SystemWebView builds, not Google-signed; a panel that still gets WebView through Play should use Play instead.",
+      "options": [
+        "None",
+        "LineageOS 138.0.7204.63 - arm64, Android 8.1 (NSPanel Pro)",
+        "LineageOS 150.0.7871.63 - arm64, newer Android",
+        "LineageOS 150.0.7871.63 - arm 32-bit, newer Android",
+        "Cromite 147.0.7727.56 - arm 32-bit, Android 11+ (TPA10)"
+      ],
+      "default": "None",
+      "group": "WebView"
+    },
+    {
       "key": "webviewUrl",
       "type": "string",
       "title": "System WebView APK (URL)",
-      "description": "HTTPS URL to a com.android.webview build for this panel's ABI. Trigger the Update WebView action below.",
+      "description": "HTTPS URL to a com.android.webview build for this panel's ABI. Overrides the dropdown above when non-empty. Trigger the Update WebView action below.",
       "default": "",
       "group": "WebView"
     },
     {
-      "key": "tamePreset",
-      "type": "select",
-      "title": "Tame: preset bundle",
-      "description": "One-click bundles of vendor packages known to interfere with kiosk use. Applied in addition to the list below, not instead of it. Taming is reversible: clearing this re-enables whatever it disabled. Entries marked unverified come from ha-paneld's hardware notes and were not confirmed on a panel here — a name that doesn't exist on your model is simply skipped.",
-      "options": [
-        "None",
-        "elclcd panels: OTA updater + keepalive",
-        "Factory test apps (verified on test panels)",
-        "SmartOS/xinch vendor apps (documented, unverified)",
-        "Tuya test app (documented, unverified)"
-      ],
-      "default": "None",
+      "key": "tameOtaUpdater",
+      "type": "boolean",
+      "title": "elclcd OTA updater",
+      "description": "Verified on rk3576 panels. The one entry ha-paneld documents plainly as a safe, reversible disable — left running it can re-enable ADB and push vendor firmware under you. Package: com.elclcd.otaupdater",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameKeepalive",
+      "type": "boolean",
+      "title": "elclcd keepalive service",
+      "description": "Verified on rk3576 panels. The vendor's process-resurrector — this is what undoes taming anything else, so tame it alongside whatever else you tame on these panels. Package: com.elclcd.commonkeepalive",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameDeviceTest",
+      "type": "boolean",
+      "title": "Factory test: DeviceTest",
+      "description": "Verified on rk3576 and px30 panels. A factory/QA leftover with no runtime role on a deployed panel. Package: com.DeviceTest",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameSmtTest",
+      "type": "boolean",
+      "title": "Factory test: elc smt_test",
+      "description": "Verified on rk3576 and px30 panels. Factory/QA leftover. Package: com.elc.smt_test",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameStressTest",
+      "type": "boolean",
+      "title": "Factory test: cghs stresstest",
+      "description": "Verified on rk3576 and px30 panels. Factory/QA leftover. Package: com.cghs.stresstest",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameSmatekTest",
+      "type": "boolean",
+      "title": "Factory test: smatek test",
+      "description": "Verified on rk3576 and px30 panels. Factory/QA leftover. Package: com.smatek.test",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameXinchSetting",
+      "type": "boolean",
+      "title": "SmartOS/xinch settings app",
+      "description": "Documented in ha-paneld's hardware notes, not verified on a panel here. If it isn't installed on your model, toggling this does nothing. Package: com.smartos.xinch.setting",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameXinchHardware",
+      "type": "boolean",
+      "title": "SmartOS/xinch hardware service",
+      "description": "Documented in ha-paneld's hardware notes, not verified on a panel here. Note the ethernet platform service is deliberately not offered — disabling it on a wired panel would strand it. Package: com.smartos.xinch.hardware",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameTuyaTest",
+      "type": "boolean",
+      "title": "Tuya device test app",
+      "description": "Documented in ha-paneld's hardware notes, not verified on a panel here. Package: com.tuya.devicetest",
+      "default": false,
       "group": "Tame"
     },
     {
       "key": "tameVendorPackages",
       "type": "string",
       "title": "Tamed vendor packages",
-      "description": "Extra packages to tame, space or comma separated. Added to the preset above. Critical system packages are always refused.",
+      "description": "Extra packages to tame, space or comma separated, for anything not listed above. Added to the toggles, not instead of them. Critical system packages are always refused.",
       "default": "",
       "group": "Tame"
     },
