@@ -46,6 +46,7 @@ public final class PackageManagementPlugin implements KioskPlugin {
 
     public void start(PluginHost host, Map<String, Object> settings) {
         this.host = host;
+        PrivilegedShell.attach(host);
         alive.set(true);
         worker = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "package-management");
@@ -131,7 +132,17 @@ public final class PackageManagementPlugin implements KioskPlugin {
     }
 
     private void detect() {
-        rooted = Boolean.TRUE.equals(settings.get("simulation")) || RootShell.isRooted();
+        PrivilegedShell.detect();
+        rooted = Boolean.TRUE.equals(settings.get("simulation")) || PrivilegedShell.available();
+    }
+
+    /** Installing needs genuine root, not merely a privileged channel:
+     *  the APK is streamed over stdin and Shizuku offers no stdin. See
+     *  PrivilegedShell's class doc. */
+    private boolean canInstall() {
+        return Boolean.TRUE.equals(settings.get("simulation"))
+            || PrivilegedShell.MODE_ROOT.equals(PrivilegedShell.mode())
+            || PrivilegedShell.shizukuIsRoot();
     }
 
     private boolean simulation() {
@@ -151,8 +162,11 @@ public final class PackageManagementPlugin implements KioskPlugin {
             host.status("Simulation mode — would install from " + url, false);
             return;
         }
-        if (!rooted) {
-            host.status("Root access is required to install packages and isn't available on this panel.", true);
+        if (!canInstall()) {
+            host.status(PrivilegedShell.available()
+                ? "Installing needs root. This panel has " + PrivilegedShell.mode()
+                    + ", which can tame and uninstall packages but cannot stream an APK to the installer."
+                : "Root access is required to install packages and isn't available on this panel.", true);
             return;
         }
         host.status("Downloading" + (pkgHint != null ? " " + pkgHint : "") + "…", false);
@@ -178,10 +192,10 @@ public final class PackageManagementPlugin implements KioskPlugin {
             return;
         }
         if (!rooted) {
-            host.status("Root access is required to uninstall packages and isn't available on this panel.", true);
+            host.status("Root or Shizuku access is required to uninstall packages and isn't available on this panel.", true);
             return;
         }
-        boolean ok = RootShell.run("pm uninstall " + pkg, RootShell.COMMAND_TIMEOUT_MS);
+        boolean ok = PrivilegedShell.run("pm uninstall " + pkg, RootShell.COMMAND_TIMEOUT_MS);
         host.status(ok ? "OK: uninstalled " + pkg
             : "Uninstall failed — the package may be a non-removable system app.", !ok);
     }
@@ -250,7 +264,7 @@ public final class PackageManagementPlugin implements KioskPlugin {
                 host.status("Simulation mode — would tame " + toTame.size()
                     + " and restore " + toUntame.size() + " package(s).", false);
             } else if (!rooted) {
-                host.status("Root access is required to tame vendor packages and isn't available on this panel.", true);
+                host.status("Root or Shizuku access is required to tame vendor packages and isn't available on this panel.", true);
             } else {
                 StringBuilder script = new StringBuilder();
                 for (String pkg : toTame) {
@@ -262,7 +276,7 @@ public final class PackageManagementPlugin implements KioskPlugin {
                     script.append("pm enable ").append(pkg).append(" 2>/dev/null; ")
                         .append("appops set ").append(pkg).append(" SYSTEM_ALERT_WINDOW allow 2>/dev/null\n");
                 }
-                boolean ok = RootShell.run(script.toString(), RootShell.COMMAND_TIMEOUT_MS);
+                boolean ok = PrivilegedShell.run(script.toString(), RootShell.COMMAND_TIMEOUT_MS);
                 if (!ok) host.status("One or more tame operations failed.", true);
             }
         }
@@ -280,7 +294,10 @@ public final class PackageManagementPlugin implements KioskPlugin {
             host.status("Root access (e.g. via Magisk) is required for this plugin's features.", true);
             return;
         }
-        StringBuilder line = new StringBuilder("Root access available.");
+        StringBuilder line = new StringBuilder(
+            PrivilegedShell.MODE_SHIZUKU.equals(PrivilegedShell.mode())
+                ? "Shizuku access available" + (PrivilegedShell.shizukuIsRoot() ? " (root)." : " (shell) — taming and uninstalling work; installing needs root.")
+                : "Root access available.");
         int tamed = previousTameList.size();
         if (tamed > 0) line.append(" ").append(tamed).append(" package(s) tamed.");
         if (!hardwareLabel.isEmpty()) {
@@ -324,6 +341,6 @@ public final class PackageManagementPlugin implements KioskPlugin {
             // Last, so anything above still has a shell to run in: ends
         // the persistent root session rather than leaving a root
         // shell alive for a plugin that is no longer running.
-        RootShell.shutdown();
+        PrivilegedShell.detach();
 }
 }

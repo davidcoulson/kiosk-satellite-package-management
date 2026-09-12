@@ -5,7 +5,7 @@ Install or uninstall an APK by URL, update the panel's System WebView, and neutr
 ## Requirements
 
 - Kiosk Satellite with **plugin SDK 1 support**.
-- A rooted panel (e.g. Magisk). Every action here needs root — there is no direct-access fallback.
+- **Root, or Shizuku for most of it.** Taming and uninstalling are exactly what adb debloating is, and run fine as Android's shell user — so a panel with [Shizuku](https://shizuku.rikka.app/) and no root gets the whole vendor-taming half of this plugin. **Installing still needs root**: the APK is streamed into `pm install -S` over stdin, and the Shizuku call has no stdin channel. That covers **Install APK from URL** and **Update System WebView**, which say so rather than failing obscurely.
 
 ## Install and use
 

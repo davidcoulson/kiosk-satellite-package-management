@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- **Taming and uninstalling no longer require root.** They are exactly what adb debloating is — `pm disable-user`, `pm enable`, `pm uninstall`, `am force-stop`, `appops set` all run as Android's shell user, verified on real hardware. A panel with Shizuku and no root now gets the whole vendor-taming half of this plugin, which is the half most people want.
+- **Installing still requires root,** and now says why instead of failing obscurely. The APK is streamed into `pm install -S <size>` over stdin and the host's Shizuku call has no stdin channel; staging to `/data/local/tmp` doesn't rescue it either, since that path belongs to shell and this plugin runs as Kiosk Satellite's UID. This covers **Install APK from URL** and **Update System WebView**.
+- Root is preferred when both are available, and the status line names the active channel.
+
 ## 0.6.0
 
 - **One root shell per plugin instead of one per command.** Every root call used to spawn a fresh `su`, and Magisk shows its "granted Superuser rights" toast per request. The plugin now holds a single `su` session and writes commands to its stdin, so root is granted once per plugin start.
