@@ -29,6 +29,13 @@ public final class PackageManagementPlugin implements KioskPlugin {
     private Map<String, Object> settings = new HashMap<>();
 
     private volatile boolean rooted;
+    // Panel hardware, read from getDeviceInfo (KS 2026.9.42+, issue #509).
+    // Empty until the first read answers, and on a host too old to carry
+    // these fields -- every use degrades to "no recommendation" rather
+    // than guessing, so an older KS keeps working with manual picks.
+    private volatile List<String> abis = Collections.emptyList();
+    private volatile int sdkInt;
+    private volatile String hardwareLabel = "";
     private Boolean lastSimulation;
     // In-memory only — resets to empty on every plugin (re)start, so the
     // full current list is always reasserted at least once per app
@@ -45,7 +52,35 @@ public final class PackageManagementPlugin implements KioskPlugin {
             t.setDaemon(true);
             return t;
         });
+        readHardware();
         configure(settings);
+    }
+
+    /** Caches the panel's ABIs and Android level. Fire-and-forget with the
+     *  result folded back onto the worker, the same shape the network
+     *  plugin uses -- blocking the worker on a host callback would deadlock
+     *  if the host answers on that thread. */
+    private void readHardware() {
+        host.executeCommand("getDeviceInfo", Collections.emptyMap(), (ok, data, error) -> submit(() -> {
+            if (!ok || !(data instanceof Map)) return;
+            Map<?, ?> info = (Map<?, ?>) data;
+            Object rawAbis = info.get("abis");
+            if (rawAbis instanceof List) {
+                List<String> parsed = new ArrayList<>();
+                for (Object abi : (List<?>) rawAbis) {
+                    if (abi != null) parsed.add(String.valueOf(abi));
+                }
+                abis = Collections.unmodifiableList(parsed);
+            }
+            Object level = info.get("sdkInt");
+            if (level instanceof Number) sdkInt = ((Number) level).intValue();
+            String board = str(info.get("board"));
+            String device = str(info.get("device"));
+            hardwareLabel = (!board.isEmpty() ? board : device)
+                + (sdkInt > 0 ? " / API " + sdkInt : "")
+                + (abis.isEmpty() ? "" : " / " + abis.get(0));
+            reportStatus();
+        }));
     }
 
     public void configure(Map<String, Object> values) {
@@ -173,7 +208,28 @@ public final class PackageManagementPlugin implements KioskPlugin {
     private String effectiveWebViewUrl() {
         String typed = str(settings.get("webviewUrl"));
         if (!typed.isEmpty()) return typed;
-        return WebViewPresets.urlFor(str(settings.get("webviewPreset")));
+
+        String picked = str(settings.get("webviewPreset"));
+        if (WebViewPresets.AUTO.equals(picked)) {
+            WebViewPresets.Build match = WebViewPresets.recommend(abis, sdkInt);
+            if (match == null) {
+                host.status(abis.isEmpty()
+                    ? "Can't recommend a WebView build: this Kiosk Satellite build doesn't report panel hardware. Pick one manually."
+                    : "No catalogued WebView build suits this panel (" + hardwareLabel + "). Pick one manually or use the URL field.", true);
+                return "";
+            }
+            host.status("Installing the build for this panel: " + match.label, false);
+            return match.url;
+        }
+
+        // An explicit pick overrides the recommendation on purpose, so only
+        // an install that cannot succeed is worth blocking.
+        if (!WebViewPresets.canInstall(picked, abis) && !abis.isEmpty()) {
+            host.status("Refused: " + WebViewPresets.abiFor(picked) + " does not run on this panel ("
+                + abis.get(0) + "). That build cannot install here.", true);
+            return "";
+        }
+        return WebViewPresets.urlFor(picked);
     }
 
     /** Applies the tame list's full effect: newly listed packages get
@@ -224,8 +280,16 @@ public final class PackageManagementPlugin implements KioskPlugin {
             host.status("Root access (e.g. via Magisk) is required for this plugin's features.", true);
             return;
         }
+        StringBuilder line = new StringBuilder("Root access available.");
         int tamed = previousTameList.size();
-        host.status(tamed == 0 ? "Root access available." : "Root access available · " + tamed + " package(s) tamed.", false);
+        if (tamed > 0) line.append(" ").append(tamed).append(" package(s) tamed.");
+        if (!hardwareLabel.isEmpty()) {
+            line.append("\nPanel: ").append(hardwareLabel).append(".");
+            WebViewPresets.Build match = WebViewPresets.recommend(abis, sdkInt);
+            line.append("\nWebView: ").append(match == null
+                ? "no catalogued build suits this panel." : match.label + ".");
+        }
+        host.status(line.toString(), false);
     }
 
     private interface Task { void run() throws Exception; }

@@ -22,7 +22,7 @@ The plugin declares four actions — **Install APK from URL**, **Uninstall packa
 | --- | --- |
 | APK to install (URL) | An HTTPS URL to an APK. Trigger **Install APK from URL** to download and install it. |
 | Package to uninstall | An exact package ID. Trigger **Uninstall package**. Only removable (non-system, non-critical) packages can actually be removed — Android itself refuses to uninstall a system app this way. |
-| System WebView: known-good build | Dropdown of builds verified on real panels (see below). Trigger **Update System WebView** to apply. |
+| System WebView: known-good build | Dropdown of builds verified on real panels (see below), including **Recommended for this panel**, which chooses from the panel's own ABI and Android version. Trigger **Update System WebView** to apply. |
 | System WebView APK (URL) | An HTTPS URL to a `com.android.webview` build for this panel's ABI. Overrides the dropdown when non-empty, for anything the catalog doesn't cover. |
 | Uninstall: pick a known package | Dropdown of the same vendor/test packages the tame list offers, so the usual targets don't have to be typed. The text field below overrides it when non-empty. |
 | Tame: one toggle per package | Each tameable vendor package is its own on/off switch (see below), so you can tame exactly the ones you want. |
@@ -74,6 +74,10 @@ Panels without Google Play ship years-old WebView and have no update path, which
 | LineageOS 150.0.7871.63 (arm64) | arm64, newer Android |
 | LineageOS 150.0.7871.63 (arm 32-bit) | armeabi-v7a, newer Android |
 | Cromite 147.0.7727.56 | armeabi-v7a, Android 11+ — TPA10 (rk3566) |
+
+**Recommended for this panel** removes the guesswork: the plugin reads the panel's primary ABI and Android level through Kiosk Satellite's `getDeviceInfo` and resolves to the matching row above at install time. It needs KS **2026.9.42 or newer**, which added those fields in response to [#509](https://github.com/jxlarrea/kiosk-satellite/issues/509); on an older host it declines to guess and asks you to pick. No root is involved — this reads through the host, not `getprop`.
+
+Picking a build whose ABI the panel cannot run is refused before anything downloads. A build the panel *can* run but which isn't the recommendation still installs: overriding deliberately is legitimate, installing something that cannot work is not.
 
 Two things to know before picking one:
 

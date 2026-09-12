@@ -3,13 +3,15 @@
   "apiVersion": 1,
   "id": "package-management",
   "name": "Package Management",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "minAndroidSdk": 24,
   "entryClass": "me.jxl.kiosk.plugins.packagemanagement.PackageManagementPlugin",
   "description": "Install or uninstall an APK by URL, update the panel's System WebView, and neutralize intrusive vendor packages. Requires root; no vendor signature pinning or auto-update machinery — you choose what to install.",
   "author": "David Coulson",
   "license": "Apache-2.0",
-  "capabilities": [],
+  "capabilities": [
+    "host.read"
+  ],
   "settings": [
     {
       "key": "installUrl",
@@ -54,13 +56,14 @@
       "key": "webviewPreset",
       "type": "select",
       "title": "System WebView: known-good build",
-      "description": "Builds ha-paneld verified on real panels, for panels with no Google Play and so no WebView update path. Pick the one matching this panel's ABI and Android version; a mismatch fails the install rather than damaging anything. Not Google-signed — if this panel still gets WebView through Play, use Play instead. See the README.",
+      "description": "Pick \"Recommended for this panel\" to let the plugin choose from the panel's own ABI and Android version. Builds are ha-paneld's, verified on real panels. An explicit pick overrides the recommendation; one whose ABI can't run here is refused. Not Google-signed — a panel that still gets WebView through Play should use Play. See the README.",
       "options": [
         "None",
+        "Recommended for this panel",
         "LineageOS 138.0.7204.63 - arm64, Android 8.1 (NSPanel Pro)",
         "LineageOS 150.0.7871.63 - arm64, newer Android",
-        "LineageOS 150.0.7871.63 - arm 32-bit, newer Android",
-        "Cromite 147.0.7727.56 - arm 32-bit, Android 11+ (TPA10)"
+        "Cromite 147.0.7727.56 - arm 32-bit, Android 11+ (TPA10)",
+        "LineageOS 150.0.7871.63 - arm 32-bit, newer Android"
       ],
       "default": "None",
       "group": "WebView"

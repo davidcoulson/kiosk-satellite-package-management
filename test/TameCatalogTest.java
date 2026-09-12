@@ -81,6 +81,7 @@ public final class TameCatalogTest {
         @SuppressWarnings("unchecked")
         List<String> labels = (List<String>) optionLabels.invoke(null);
         assertEquals("None", labels.get(0), "None is first so it reads as the default");
+        assertEquals("Recommended for this panel", labels.get(1), "auto is offered right after None");
         assertTrue(labels.size() >= 2 && labels.size() <= 32, "SDK 1 caps a select at 32 options");
         for (String l : labels) {
             assertTrue(!l.isEmpty() && l.length() <= 80, "each option fits SDK 1's 1..80 char limit: " + l);
@@ -89,24 +90,79 @@ public final class TameCatalogTest {
         Method urlFor = webview.getDeclaredMethod("urlFor", String.class);
         urlFor.setAccessible(true);
         assertEquals("", urlFor.invoke(null, "None"), "None resolves to no URL");
+        assertEquals("", urlFor.invoke(null, "Recommended for this panel"),
+            "auto has no URL of its own — it needs hardware to resolve");
         assertEquals("", urlFor.invoke(null, "Not A Real Build"),
             "an unknown label installs nothing rather than throwing");
         assertEquals("", urlFor.invoke(null, (Object) null), "null resolves to no URL");
 
         Method all = webview.getDeclaredMethod("all");
         all.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        Map<String, String> builds = (Map<String, String>) all.invoke(null);
+        List<?> builds = (List<?>) all.invoke(null);
         Method isHttps = math.getDeclaredMethod("isHttpsUrl", String.class);
         isHttps.setAccessible(true);
-        for (Map.Entry<String, String> e : builds.entrySet()) {
-            String url = (String) urlFor.invoke(null, e.getKey());
-            assertEquals(e.getValue(), url, "each label resolves to its own URL: " + e.getKey());
+        for (Object build : builds) {
+            String label = field(build, "label");
+            String url = field(build, "url");
+            assertEquals(url, urlFor.invoke(null, label), "each label resolves to its own URL: " + label);
             // runInstall refuses non-HTTPS, so a preset that isn't HTTPS
             // would be a dropdown entry that can only ever fail.
             assertTrue(Boolean.TRUE.equals(isHttps.invoke(null, url)), "preset URL is HTTPS: " + url);
             assertTrue(url.endsWith(".apk"), "preset URL points at an APK: " + url);
+            assertTrue(labels.contains(label), "every build is offered in the manifest options: " + label);
         }
+
+        // --- recommendation, against the two panels actually tested ---
+        Method recommend = webview.getDeclaredMethod("recommend", List.class, int.class);
+        recommend.setAccessible(true);
+
+        // NSPanel Pro (px30), Android 8.1. ha-paneld says it caps at 138 —
+        // and the panel here is already running 138.0.7204.63, so this is a
+        // real check against known-correct hardware, not a made-up case.
+        Object px30 = recommend.invoke(null, Arrays.asList("arm64-v8a", "armeabi-v7a", "armeabi"), 27);
+        assertTrue(px30 != null, "an Android 8.1 arm64 panel gets a recommendation");
+        assertTrue(field(px30, "label").startsWith("LineageOS 138"),
+            "Android 8.1 caps at WebView 138, got " + field(px30, "label"));
+
+        // WF2489T (rk3576), Android 14.
+        Object rk3576 = recommend.invoke(null, Arrays.asList("arm64-v8a", "armeabi-v7a"), 34);
+        assertTrue(rk3576 != null, "a modern arm64 panel gets a recommendation");
+        assertTrue(field(rk3576, "label").startsWith("LineageOS 150.0.7871.63 - arm64"),
+            "Android 14 arm64 takes the newer 64-bit build, got " + field(rk3576, "label"));
+
+        // TPA10 (rk3566), 32-bit Android 11+ — ha-paneld maps this to Cromite,
+        // which is why Cromite is ordered ahead of the 32-bit LineageOS build.
+        Object tpa10 = recommend.invoke(null, Arrays.asList("armeabi-v7a", "armeabi"), 30);
+        assertTrue(tpa10 != null && field(tpa10, "label").startsWith("Cromite"),
+            "32-bit Android 11+ takes Cromite per ha-paneld's mapping");
+
+        // The primary ABI decides, not merely what the panel can run: a
+        // 64-bit panel lists armeabi-v7a too, and must not be handed a
+        // 32-bit WebView.
+        assertTrue(field(recommend.invoke(null, Arrays.asList("arm64-v8a", "armeabi-v7a"), 30), "abi")
+            .equals("arm64-v8a"), "a 64-bit panel is never recommended a 32-bit build");
+
+        assertTrue(recommend.invoke(null, Arrays.asList("x86_64"), 30) == null,
+            "an ABI with no catalogued build yields no recommendation rather than a wrong one");
+        assertTrue(recommend.invoke(null, Arrays.asList("arm64-v8a"), 21) == null,
+            "an Android older than anything catalogued yields no recommendation");
+        assertTrue(recommend.invoke(null, java.util.Collections.emptyList(), 30) == null,
+            "no ABI data (older KS) yields no recommendation rather than a guess");
+        assertTrue(recommend.invoke(null, (Object) null, 30) == null, "null ABIs are safe");
+        assertTrue(recommend.invoke(null, Arrays.asList("arm64-v8a"), 0) == null,
+            "no Android level yields no recommendation");
+
+        Method canInstall = webview.getDeclaredMethod("canInstall", String.class, List.class);
+        canInstall.setAccessible(true);
+        assertTrue(Boolean.FALSE.equals(canInstall.invoke(null,
+            "Cromite 147.0.7727.56 - arm 32-bit, Android 11+ (TPA10)", Arrays.asList("arm64-v8a"))),
+            "a 32-bit build is refused on a panel that lists no 32-bit ABI");
+        assertTrue(Boolean.TRUE.equals(canInstall.invoke(null,
+            "Cromite 147.0.7727.56 - arm 32-bit, Android 11+ (TPA10)",
+            Arrays.asList("arm64-v8a", "armeabi-v7a"))),
+            "an explicit pick the panel can run is allowed even when not recommended");
+        assertTrue(Boolean.TRUE.equals(canInstall.invoke(null, "None", Arrays.asList("arm64-v8a"))),
+            "labels naming no build are never refused on ABI grounds");
 
         // --- merge semantics (toggles + free text) ---
         @SuppressWarnings("unchecked")
@@ -156,7 +212,9 @@ public final class TameCatalogTest {
         assertTrue(manifest.contains("\"webviewPreset\""), "manifest declares the WebView dropdown");
 
         System.out.println("PASS: tame catalog shape/uniqueness/validation, ethernet exclusion, "
-            + "toggle selection semantics, WebView preset URLs, merge ordering/dedup/critical filtering, "
+            + "toggle selection semantics, WebView preset URLs and per-panel recommendation "
+            + "(px30/rk3576/tpa10, primary-ABI preference, no-guess fallbacks), "
+            + "merge ordering/dedup/critical filtering, "
             + "and manifest/Java catalog agreement.");
     }
 

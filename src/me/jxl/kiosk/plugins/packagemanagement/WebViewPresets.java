@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package me.jxl.kiosk.plugins.packagemanagement;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Known-working System WebView builds, so updating a Play-less panel is a
@@ -56,43 +56,120 @@ final class WebViewPresets {
     /** Manifest-facing label for "use the URL field instead", and the default. */
     static final String NONE = "None";
 
+    /** Manifest-facing label meaning "work it out from this panel's hardware".
+     *  Resolved at install time from getDeviceInfo, not baked into the
+     *  manifest — SDK 1 select options are static, but what a label *means*
+     *  need not be. */
+    static final String AUTO = "Recommended for this panel";
+
     private static final String MIRROR =
         "https://github.com/maxlyth/ha-paneld/releases/download/webview-mirror/";
 
-    // Ordered oldest-Android first, since the panels that need this at all
-    // are the old ones — the newest build is rarely the right answer here.
-    private static final Map<String, String> PRESETS = new LinkedHashMap<>();
-    static {
-        PRESETS.put("LineageOS 138.0.7204.63 - arm64, Android 8.1 (NSPanel Pro)",
-            MIRROR + "lineageos-webview-138.0.7204.63.apk");
-        PRESETS.put("LineageOS 150.0.7871.63 - arm64, newer Android",
-            MIRROR + "lineageos-webview-150.0.7871.63-arm64.apk");
-        PRESETS.put("LineageOS 150.0.7871.63 - arm 32-bit, newer Android",
-            MIRROR + "lineageos-webview-150.0.7871.63-arm.apk");
-        PRESETS.put("Cromite 147.0.7727.56 - arm 32-bit, Android 11+ (TPA10)",
-            MIRROR + "cromite-webview-147.0.7727.56.apk");
+    /** A build, the hardware it suits, and the Android range it is the right
+     *  answer for. {@code maxSdk} is Integer.MAX_VALUE where nothing caps it. */
+    static final class Build {
+        final String label;
+        final String url;
+        final String abi;
+        final int minSdk;
+        final int maxSdk;
+
+        Build(String label, String url, String abi, int minSdk, int maxSdk) {
+            this.label = label;
+            this.url = url;
+            this.abi = abi;
+            this.minSdk = minSdk;
+            this.maxSdk = maxSdk;
+        }
+
+        boolean suits(String primaryAbi, int sdkInt) {
+            return abi.equals(primaryAbi) && sdkInt >= minSdk && sdkInt <= maxSdk;
+        }
     }
 
-    /** Dropdown options for the manifest, {@link #NONE} first. */
+    // Ordered so the first entry that suits a panel is the right answer for
+    // it. That matters for 32-bit Android 11+, where both the Cromite build
+    // and the newer LineageOS one are installable: ha-paneld maps the TPA10
+    // to Cromite, so Cromite is listed first and wins.
+    private static final List<Build> BUILDS = Collections.unmodifiableList(Arrays.asList(
+        // Android 8.1 caps here. ha-paneld's NSPanel Pro (px30) guidance, and
+        // the version an NSPanel Pro tested here is already running.
+        new Build("LineageOS 138.0.7204.63 - arm64, Android 8.1 (NSPanel Pro)",
+            MIRROR + "lineageos-webview-138.0.7204.63.apk", "arm64-v8a", 26, 27),
+        new Build("LineageOS 150.0.7871.63 - arm64, newer Android",
+            MIRROR + "lineageos-webview-150.0.7871.63-arm64.apk", "arm64-v8a", 28, Integer.MAX_VALUE),
+        new Build("Cromite 147.0.7727.56 - arm 32-bit, Android 11+ (TPA10)",
+            MIRROR + "cromite-webview-147.0.7727.56.apk", "armeabi-v7a", 30, Integer.MAX_VALUE),
+        new Build("LineageOS 150.0.7871.63 - arm 32-bit, newer Android",
+            MIRROR + "lineageos-webview-150.0.7871.63-arm.apk", "armeabi-v7a", 28, 29)));
+
+    /** Dropdown options for the manifest: {@link #NONE}, {@link #AUTO}, then
+     *  every build in catalog order. */
     static List<String> optionLabels() {
-        List<String> labels = new java.util.ArrayList<>();
+        List<String> labels = new ArrayList<>();
         labels.add(NONE);
-        labels.addAll(PRESETS.keySet());
+        labels.add(AUTO);
+        for (Build build : BUILDS) labels.add(build.label);
         return labels;
     }
 
-    /** The download URL a label maps to — empty for {@link #NONE}, an
-     *  unknown label, or null. An unrecognised label resolves to empty
-     *  rather than throwing, so a manifest/code version skew installs
-     *  nothing instead of installing something unintended. */
+    /** The download URL a label maps to — empty for {@link #NONE},
+     *  {@link #AUTO} (which needs hardware to resolve; see
+     *  {@link #recommend}), an unknown label, or null. An unrecognised label
+     *  resolves to empty rather than throwing, so a manifest/code version
+     *  skew installs nothing instead of installing something unintended. */
     static String urlFor(String label) {
-        if (label == null) return "";
-        String url = PRESETS.get(label);
-        return url == null ? "" : url;
+        Build build = buildFor(label);
+        return build == null ? "" : build.url;
+    }
+
+    /** The ABI a labelled build needs, or empty where the label names no
+     *  specific build. */
+    static String abiFor(String label) {
+        Build build = buildFor(label);
+        return build == null ? "" : build.abi;
+    }
+
+    static Build buildFor(String label) {
+        if (label == null) return null;
+        for (Build build : BUILDS) {
+            if (build.label.equals(label)) return build;
+        }
+        return null;
+    }
+
+    /** The build this panel should get, or null when nothing in the catalog
+     *  suits it — an ABI we carry no build for, or an Android version older
+     *  than anything here. Null is a refusal to guess: installing the wrong
+     *  WebView replaces what renders the dashboard, so "no recommendation"
+     *  has to be an available answer.
+     *
+     *  <p>Matching uses the panel's <em>primary</em> ABI (first entry of
+     *  getDeviceInfo's {@code abis}, which Android returns in preference
+     *  order) rather than any ABI it can run. A 64-bit panel lists
+     *  armeabi-v7a too, and picking a 32-bit WebView for it would install
+     *  something that runs but is not what the platform wants. */
+    static Build recommend(List<String> abis, int sdkInt) {
+        if (abis == null || abis.isEmpty() || sdkInt <= 0) return null;
+        String primary = abis.get(0);
+        for (Build build : BUILDS) {
+            if (build.suits(primary, sdkInt)) return build;
+        }
+        return null;
+    }
+
+    /** Whether a panel can install a labelled build at all — the build's ABI
+     *  appears anywhere in the panel's list. Deliberately looser than
+     *  {@link #recommend}: an explicit pick is someone overriding the
+     *  recommendation on purpose, and only an outright impossible install is
+     *  worth refusing. */
+    static boolean canInstall(String label, List<String> abis) {
+        String needed = abiFor(label);
+        return needed.isEmpty() || (abis != null && abis.contains(needed));
     }
 
     /** Read-only view, for tests and diagnostics. */
-    static Map<String, String> all() {
-        return Collections.unmodifiableMap(PRESETS);
+    static List<Build> all() {
+        return BUILDS;
     }
 }

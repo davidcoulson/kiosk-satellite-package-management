@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- **The WebView dropdown can now pick for itself.** A new **Recommended for this panel** option reads the panel's primary ABI and Android level from `getDeviceInfo` and resolves to the matching build at install time. Previously you had to know whether the panel was arm64 or arm 32-bit, and which Chromium version its Android release caps at, and get both right before downloading a quarter-gigabyte APK.
+- **An impossible pick is refused before downloading.** Choosing a build whose ABI the panel cannot run reports why and stops. An explicit pick the panel *can* run is still honoured even when it isn't the recommendation — overriding on purpose is legitimate; installing something that cannot work is not.
+- The plugin subpage now reports the detected panel (board, API level, primary ABI) and which build suits it.
+- Requires the `host.read` capability, and Kiosk Satellite **2026.9.42+**, which added these fields in response to [#509](https://github.com/jxlarrea/kiosk-satellite/issues/509). On an older host the fields are absent, the recommendation declines to guess, and manual picks work exactly as before — no root needed either way, since this reads through the host rather than `getprop`.
+- Recommendations are tested against the two panels on hand: a px30 on Android 8.1 resolves to LineageOS 138 (which that panel already runs, so the expected answer is known independently) and an rk3576 on Android 14 to LineageOS 150 arm64. A 64-bit panel is never offered a 32-bit build even though it lists `armeabi-v7a` — the *primary* ABI decides.
+
 ## 0.4.1
 
 - **Fixes 0.3.0 and 0.4.0 being uninstallable.** The `webviewPreset` description was 488 characters against Kiosk Satellite's 400-character cap for setting descriptions, so the host rejected the entire manifest with "Invalid description" and greyed out **Trust and update**. Both releases were affected; 0.3.0 introduced it. The text is trimmed and the detail it carried lives in the README.
