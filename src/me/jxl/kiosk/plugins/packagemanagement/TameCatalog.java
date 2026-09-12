@@ -31,27 +31,41 @@ import java.util.Map;
  * hatch and is ADDITIVE to whatever is toggled here — see
  * PackageManagementMath.mergeTameSources.
  *
- * <h2>On how these were chosen</h2>
+ * <h2>Where this list comes from</h2>
  *
- * These are NOT ported from a vetted upstream list — ha-paneld has no
- * curated tame list, only a handful of package names mentioned in
- * per-device hardware docs. Each entry records where it came from:
+ * Mostly ported from ha-paneld, which does maintain a vetted per-package
+ * list — not in its docs, but in the {@code provisioning.packages} block
+ * of each device profile under {@code app/src/main/assets/device-profiles}.
+ * Every entry there carries a {@code desired_state}, an {@code importance}
+ * rating, tags, and a note explaining what the package is. Fourteen
+ * distinct packages across the profiles; twelve are here.
+ *
+ * Two of theirs are deliberately left out:
  *
  * <ul>
- *   <li><b>Verified present</b> on a real panel over adb during authoring.</li>
- *   <li><b>Documented</b> in ha-paneld's hardware notes but not verified
- *       here — the description says so, because an unverified name on the
- *       wrong panel model is a package that simply doesn't exist
- *       (harmless) or, worse, a different vendor's package that matters.</li>
+ *   <li>{@code com.android.rockchip.camera2} — ha-paneld qualifies this one
+ *       ("safe to disable unless you use the camera or HDMI input"), and
+ *       Kiosk Satellite has real camera features, so a one-tap toggle that
+ *       silently breaks them is exactly the kind of thing that doesn't
+ *       belong here.</li>
+ *   <li>{@code com.smartos.xinch.communicate} — a vendor demo on one panel
+ *       model, and the settings budget is finite. Type it if you want it.</li>
  * </ul>
  *
- * Deliberately excluded: {@code com.smartos.xinch.platform.ethernet}.
- * ha-paneld's docs list it alongside the other xinch vendor packages, but
- * disabling the ethernet platform service on a wired panel would take its
- * network down — and a wall-mounted panel that loses networking is a
- * physical-access recovery job. Nothing that can strand a panel gets a
- * one-tap toggle. Anyone who genuinely wants it can still type it into the
- * text field, where the deliberateness is the safeguard.
+ * Also not a tame candidate, despite appearing in ha-paneld's tpa10
+ * hardware doc: {@code com.smartos.xinch.platform.ethernet}. That doc
+ * lists it as the panel's *wired networking feature*, not as something to
+ * disable — and disabling it on a wired panel would take its network down,
+ * which on a wall-mounted panel is a physical-access recovery job. It is
+ * named here only so nobody reads that doc and assumes the omission was an
+ * oversight.
+ *
+ * One entry ({@code com.smatek.test}) is ours rather than theirs: verified
+ * present on both panels tested here, absent from their profiles. Each
+ * description says whether the package was seen on a panel here, came from
+ * an ha-paneld profile, or both — because an unverified name on the wrong
+ * model is simply a package that doesn't exist, and the toggle does
+ * nothing rather than something surprising.
  */
 final class TameCatalog {
     private TameCatalog() {}
@@ -78,33 +92,45 @@ final class TameCatalog {
     // Ordered by how commonly the package actually gets in the way, so the
     // ones most panels want are at the top of the group.
     private static final List<Entry> ENTRIES = Collections.unmodifiableList(Arrays.asList(
+        // --- Verified on panels here AND listed by ha-paneld ---
         new Entry("tameOtaUpdater", "com.elclcd.otaupdater",
             "elclcd OTA updater",
-            "Verified on rk3576 panels. The one entry ha-paneld documents plainly as a safe, reversible disable — left running it can re-enable ADB and push vendor firmware under you."),
+            "ELC \"Firmware Upgrade\", the vendor OTA updater. Disable to stop the panel auto-applying vendor firmware that re-adds bloat — and, on some images, re-enables ADB. Verified on rk3576; ha-paneld disables it on smt1019 and wf1589t."),
         new Entry("tameKeepalive", "com.elclcd.commonkeepalive",
             "elclcd keepalive service",
-            "Verified on rk3576 panels. The vendor's process-resurrector — this is what undoes taming anything else, so tame it alongside whatever else you tame on these panels."),
+            "ELC \"CommonKeepAlive\", the vendor's process-resurrector — this is what undoes taming anything else, so tame it alongside whatever else you tame on these panels. Verified on rk3576; ha-paneld disables it on smt1019."),
+        new Entry("tamePwmLightDemo", "com.gulukai.pwmlightdemo",
+            "Vendor RGB LED demo (PwmLightDemo)",
+            "The only package ha-paneld rates *recommended* rather than optional. Its boot-started foreground service continuously cycles colours through /dev/ledjni, which fights any LED control of your own. Tame this if you use the Rockchip LED plugin."),
         new Entry("tameDeviceTest", "com.DeviceTest",
             "Factory test: DeviceTest",
-            "Verified on rk3576 and px30 panels. A factory/QA leftover with no runtime role on a deployed panel."),
+            "Generic factory device-test app, in /odm persist so it survives a factory reset. Diagnostic only. Verified on rk3576 and px30; ha-paneld disables it on smt1019 and wf1589t."),
+        new Entry("tameStressTest", "com.cghs.stresstest",
+            "Factory test: burn-in Stresstest",
+            "Factory hardware stress-test (\"burn-in\") tool, a priv-app. Production-line QA with no role on a deployed panel. Verified on rk3576 and px30; ha-paneld disables it on wf1589t."),
         new Entry("tameSmtTest", "com.elc.smt_test",
             "Factory test: elc smt_test",
-            "Verified on rk3576 and px30 panels. Factory/QA leftover."),
-        new Entry("tameStressTest", "com.cghs.stresstest",
-            "Factory test: cghs stresstest",
-            "Verified on rk3576 and px30 panels. Factory/QA leftover."),
+            "ELC factory QA tool, in /odm persist so it survives a factory reset. Verified on rk3576 and px30; ha-paneld disables it on smt1019."),
+
+        // --- From ha-paneld's device profiles; not seen on a panel here ---
+        new Entry("tameRockchipTest", "com.rockchip.devicetest",
+            "Factory test: Rockchip devicetest",
+            "Rockchip SoC factory device-test suite. Diagnostic only. From ha-paneld's wf1589t profile; not present on the panels tested here, in which case this toggle does nothing."),
         new Entry("tameSmatekTest", "com.smatek.test",
             "Factory test: smatek test",
-            "Verified on rk3576 and px30 panels. Factory/QA leftover."),
-        new Entry("tameXinchSetting", "com.smartos.xinch.setting",
-            "SmartOS/xinch settings app",
-            "Documented in ha-paneld's hardware notes, not verified on a panel here. If it isn't installed on your model, toggling this does nothing."),
-        new Entry("tameXinchHardware", "com.smartos.xinch.hardware",
-            "SmartOS/xinch hardware service",
-            "Documented in ha-paneld's hardware notes, not verified on a panel here. Note the ethernet platform service is deliberately not offered — disabling it on a wired panel would strand it."),
+            "Factory/QA leftover. Verified present on rk3576 and px30 panels here; this one is not in ha-paneld's profiles."),
         new Entry("tameTuyaTest", "com.tuya.devicetest",
-            "Tuya device test app",
-            "Documented in ha-paneld's hardware notes, not verified on a panel here.")));
+            "Factory test: Tuya devicetest",
+            "Tuya factory device-test app, in /odm so it persists across a factory reset. Diagnostic only. From ha-paneld's tpa10 profile."),
+        new Entry("tameXinchSmartIot", "com.smartos.xinch.smartiot",
+            "Xinch SmartIoT control app",
+            "SmartOS/Tuya IoT control app — redundant alongside Home Assistant. From ha-paneld's tpa10 profile."),
+        new Entry("tameXinchSmartHome", "com.smartos.xinch.smarthome",
+            "Xinch smart-home control app",
+            "SmartOS/Tuya smart-home control app — redundant on a Home Assistant panel. From ha-paneld's tpa10 profile."),
+        new Entry("tameXinchMonitor", "com.smartos.xinch.monitor",
+            "Xinch PerformanceMonitor",
+            "Vendor diagnostic overlay app. Not needed in normal operation, and its overlay is the kind that lands on top of a dashboard. From ha-paneld's tpa10 profile.")));
 
     /** Every tameable package, in panel display order. */
     static List<Entry> entries() {

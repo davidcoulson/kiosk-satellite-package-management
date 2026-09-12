@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- **Correction: ha-paneld does maintain a curated package list, and this release ports it.** 0.2.0 and 0.3.0 both claimed it didn't — that was wrong, and the claim shaped the catalog. The list isn't in ha-paneld's documentation; it's in the `provisioning.packages` block of each device profile under `app/src/main/assets/device-profiles/`, with a desired state, importance rating, tags, and a note per package. Fourteen distinct packages across the profiles.
+- The catalog is now twelve packages, mostly theirs. New: `com.gulukai.pwmlightdemo` (the only one ha-paneld rates *recommended* — its boot service cycles colours through `/dev/ledjni` and fights the Rockchip LED plugin), `com.rockchip.devicetest`, `com.smartos.xinch.smartiot`, `com.smartos.xinch.smarthome`, `com.smartos.xinch.monitor`.
+- Removed `com.smartos.xinch.setting` and `com.smartos.xinch.hardware`: these were mine, guessed from ha-paneld's prose docs, and neither appears in its actual profile data. The real xinch packages are the four above.
+- Descriptions now say per package whether it was seen on a panel here, came from an ha-paneld profile, or both, and which profile.
+- Deliberately not included, with reasons in the README: `com.android.rockchip.camera2` (qualified even upstream — disabling it breaks camera and HDMI input, and Kiosk Satellite has camera features) and `com.smartos.xinch.communicate` (one model, vendor demo, and the settings budget is finite). Both remain typeable.
+- Manifest is at 19 of SDK 1's 20-setting cap. The next package added means one removed.
+
 ## 0.3.0
 
 - **Tame is now a list of packages, one toggle each,** replacing 0.2.0's single preset-bundle dropdown. Bundles forced an all-or-nothing pick — you couldn't tame the vendor OTA updater while leaving one factory test app alone — and SDK 1 has no multi-select anywhere in its API, so booleans are the only per-item control available. Nine packages are listed, each with its own provenance note. The free-text field stays and is still additive.

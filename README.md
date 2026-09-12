@@ -37,23 +37,30 @@ This is a deliberate difference from ha-paneld's own installer, which pins a sig
 
 Each package worth taming is its own toggle rather than an entry in a preset bundle. Bundles were the first attempt and forced a false choice: a panel that wants the vendor OTA updater tamed but one factory test app left alone can't say so, because picking a bundle is all-or-nothing and SDK 1's `select` is single-value with no multi-select anywhere in the API. Booleans are the only per-item control SDK 1 offers, so the catalog is flat — one switch per package, each with its own description, and the text field below as the escape hatch for anything not listed.
 
-The ceiling on this list is SDK 1's cap of 20 settings per plugin, each package spending one. A package earns a row only if it is genuinely worth taming on a panel someone would run Kiosk Satellite on.
+Most of this list is **ported from ha-paneld**, which does maintain a vetted per-package list — not in its documentation, but in the `provisioning.packages` block of each device profile under `app/src/main/assets/device-profiles/`. Each entry there carries a desired state, an importance rating, tags, and a note on what the package actually is. Fourteen distinct packages across the profiles; twelve are here.
 
-| Toggle | Package | Provenance |
+| Toggle | Package | Source |
 | --- | --- | --- |
-| elclcd OTA updater | `com.elclcd.otaupdater` | **Verified present** on a WF2489T (rk3576) over adb. The one case ha-paneld documents plainly as a safe, reversible disable — left running it can re-enable ADB and push vendor firmware under you. |
-| elclcd keepalive service | `com.elclcd.commonkeepalive` | **Verified present** (rk3576). The vendor's process-resurrector, which is what undoes taming anything else. |
-| Factory test: DeviceTest | `com.DeviceTest` | **Verified present** on rk3576 and px30. Factory/QA leftover with no runtime role on a deployed panel. |
-| Factory test: elc smt_test | `com.elc.smt_test` | **Verified present** on rk3576 and px30. |
-| Factory test: cghs stresstest | `com.cghs.stresstest` | **Verified present** on rk3576 and px30. |
-| Factory test: smatek test | `com.smatek.test` | **Verified present** on rk3576 and px30. |
-| SmartOS/xinch settings app | `com.smartos.xinch.setting` | **Documented, unverified** — from ha-paneld's hardware notes, not confirmed on any panel here. |
-| SmartOS/xinch hardware service | `com.smartos.xinch.hardware` | **Documented, unverified** — same caveat. |
-| Tuya device test app | `com.tuya.devicetest` | **Documented, unverified** — same caveat. |
+| elclcd OTA updater | `com.elclcd.otaupdater` | Verified here (rk3576) **and** ha-paneld (smt1019, wf1589t) |
+| elclcd keepalive service | `com.elclcd.commonkeepalive` | Verified here (rk3576) **and** ha-paneld (smt1019) |
+| Vendor RGB LED demo (PwmLightDemo) | `com.gulukai.pwmlightdemo` | ha-paneld (wf1589t) — the **only** package it rates *recommended* |
+| Factory test: DeviceTest | `com.DeviceTest` | Verified here (rk3576, px30) **and** ha-paneld (smt1019, wf1589t) |
+| Factory test: burn-in Stresstest | `com.cghs.stresstest` | Verified here (rk3576, px30) **and** ha-paneld (wf1589t) |
+| Factory test: elc smt_test | `com.elc.smt_test` | Verified here (rk3576, px30) **and** ha-paneld (smt1019) |
+| Factory test: Rockchip devicetest | `com.rockchip.devicetest` | ha-paneld (wf1589t) |
+| Factory test: smatek test | `com.smatek.test` | Verified here (rk3576, px30) — ours, not in ha-paneld's profiles |
+| Factory test: Tuya devicetest | `com.tuya.devicetest` | ha-paneld (tpa10) |
+| Xinch SmartIoT control app | `com.smartos.xinch.smartiot` | ha-paneld (tpa10) |
+| Xinch smart-home control app | `com.smartos.xinch.smarthome` | ha-paneld (tpa10) |
+| Xinch PerformanceMonitor | `com.smartos.xinch.monitor` | ha-paneld (tpa10) |
 
-These are **not** ported from a vetted upstream list. ha-paneld has no curated tame list; it has a handful of package names mentioned in per-device hardware docs, plus one roadmap note about a runaway Zigbee guard (a shell script, not a package). Everything above was assembled for this plugin, and each row says how much confidence it carries. A package name that doesn't exist on your model is simply skipped, so an unverified toggle on the wrong hardware is inert rather than harmful.
+A package that isn't installed on your model is simply skipped, so a toggle for hardware you don't have is inert rather than harmful.
 
-**`com.smartos.xinch.platform.ethernet` is deliberately absent**, even though ha-paneld's docs list it alongside the other xinch packages. Disabling the ethernet platform service on a wired panel takes its network down, and a wall-mounted panel that loses networking is a physical-access recovery job. Nothing that can strand a panel gets a one-tap toggle. It can still be typed into the text field, where the deliberateness is the safeguard.
+**Two of ha-paneld's are deliberately left out.** `com.android.rockchip.camera2` is qualified even upstream ("safe to disable *unless you use the camera or HDMI input*"), and Kiosk Satellite has real camera features — a one-tap toggle that silently breaks them doesn't belong here. `com.smartos.xinch.communicate` is a vendor demo on one model, and the settings budget is finite. Both can still be typed into the text field.
+
+**`com.smartos.xinch.platform.ethernet` is not a tame candidate at all**, despite appearing in ha-paneld's tpa10 hardware page — that page lists it as the panel's *wired networking feature*, not as something to disable. Disabling it on a wired panel takes the network down, and a wall-mounted panel that loses networking is a physical-access recovery job. It's named here only so nobody reads that page and assumes the omission was an oversight.
+
+The ceiling on this list is SDK 1's cap of **20 settings per plugin**; with seven non-tame settings, twelve toggles brings the manifest to 19. Adding a thirteenth package means removing something else, which is why the bar for a row is "worth taming on a panel someone would actually run Kiosk Satellite on."
 
 Toggles are additive and reversible: switching one off re-enables whatever it disabled, exactly as removing a name from the text list does.
 

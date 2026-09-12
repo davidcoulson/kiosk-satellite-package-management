@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "package-management",
   "name": "Package Management",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "minAndroidSdk": 24,
   "entryClass": "me.jxl.kiosk.plugins.packagemanagement.PackageManagementPlugin",
   "description": "Install or uninstall an APK by URL, update the panel's System WebView, and neutralize intrusive vendor packages. Requires root; no vendor signature pinning or auto-update machinery — you choose what to install.",
@@ -28,13 +28,16 @@
         "None",
         "com.elclcd.otaupdater",
         "com.elclcd.commonkeepalive",
+        "com.gulukai.pwmlightdemo",
         "com.DeviceTest",
-        "com.elc.smt_test",
         "com.cghs.stresstest",
+        "com.elc.smt_test",
+        "com.rockchip.devicetest",
         "com.smatek.test",
-        "com.smartos.xinch.setting",
-        "com.smartos.xinch.hardware",
-        "com.tuya.devicetest"
+        "com.tuya.devicetest",
+        "com.smartos.xinch.smartiot",
+        "com.smartos.xinch.smarthome",
+        "com.smartos.xinch.monitor"
       ],
       "default": "None",
       "group": "Uninstall"
@@ -74,7 +77,7 @@
       "key": "tameOtaUpdater",
       "type": "boolean",
       "title": "elclcd OTA updater",
-      "description": "Verified on rk3576 panels. The one entry ha-paneld documents plainly as a safe, reversible disable — left running it can re-enable ADB and push vendor firmware under you. Package: com.elclcd.otaupdater",
+      "description": "ELC \"Firmware Upgrade\", the vendor OTA updater. Disable to stop the panel auto-applying vendor firmware that re-adds bloat — and, on some images, re-enables ADB. Verified on rk3576; ha-paneld disables it on smt1019 and wf1589t. Package: com.elclcd.otaupdater",
       "default": false,
       "group": "Tame"
     },
@@ -82,7 +85,15 @@
       "key": "tameKeepalive",
       "type": "boolean",
       "title": "elclcd keepalive service",
-      "description": "Verified on rk3576 panels. The vendor's process-resurrector — this is what undoes taming anything else, so tame it alongside whatever else you tame on these panels. Package: com.elclcd.commonkeepalive",
+      "description": "ELC \"CommonKeepAlive\", the vendor's process-resurrector — this is what undoes taming anything else, so tame it alongside whatever else you tame on these panels. Verified on rk3576; ha-paneld disables it on smt1019. Package: com.elclcd.commonkeepalive",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tamePwmLightDemo",
+      "type": "boolean",
+      "title": "Vendor RGB LED demo (PwmLightDemo)",
+      "description": "The only package ha-paneld rates *recommended* rather than optional. Its boot-started foreground service continuously cycles colours through /dev/ledjni, which fights any LED control of your own. Tame this if you use the Rockchip LED plugin. Package: com.gulukai.pwmlightdemo",
       "default": false,
       "group": "Tame"
     },
@@ -90,7 +101,15 @@
       "key": "tameDeviceTest",
       "type": "boolean",
       "title": "Factory test: DeviceTest",
-      "description": "Verified on rk3576 and px30 panels. A factory/QA leftover with no runtime role on a deployed panel. Package: com.DeviceTest",
+      "description": "Generic factory device-test app, in /odm persist so it survives a factory reset. Diagnostic only. Verified on rk3576 and px30; ha-paneld disables it on smt1019 and wf1589t. Package: com.DeviceTest",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameStressTest",
+      "type": "boolean",
+      "title": "Factory test: burn-in Stresstest",
+      "description": "Factory hardware stress-test (\"burn-in\") tool, a priv-app. Production-line QA with no role on a deployed panel. Verified on rk3576 and px30; ha-paneld disables it on wf1589t. Package: com.cghs.stresstest",
       "default": false,
       "group": "Tame"
     },
@@ -98,15 +117,15 @@
       "key": "tameSmtTest",
       "type": "boolean",
       "title": "Factory test: elc smt_test",
-      "description": "Verified on rk3576 and px30 panels. Factory/QA leftover. Package: com.elc.smt_test",
+      "description": "ELC factory QA tool, in /odm persist so it survives a factory reset. Verified on rk3576 and px30; ha-paneld disables it on smt1019. Package: com.elc.smt_test",
       "default": false,
       "group": "Tame"
     },
     {
-      "key": "tameStressTest",
+      "key": "tameRockchipTest",
       "type": "boolean",
-      "title": "Factory test: cghs stresstest",
-      "description": "Verified on rk3576 and px30 panels. Factory/QA leftover. Package: com.cghs.stresstest",
+      "title": "Factory test: Rockchip devicetest",
+      "description": "Rockchip SoC factory device-test suite. Diagnostic only. From ha-paneld's wf1589t profile; not present on the panels tested here, in which case this toggle does nothing. Package: com.rockchip.devicetest",
       "default": false,
       "group": "Tame"
     },
@@ -114,31 +133,39 @@
       "key": "tameSmatekTest",
       "type": "boolean",
       "title": "Factory test: smatek test",
-      "description": "Verified on rk3576 and px30 panels. Factory/QA leftover. Package: com.smatek.test",
-      "default": false,
-      "group": "Tame"
-    },
-    {
-      "key": "tameXinchSetting",
-      "type": "boolean",
-      "title": "SmartOS/xinch settings app",
-      "description": "Documented in ha-paneld's hardware notes, not verified on a panel here. If it isn't installed on your model, toggling this does nothing. Package: com.smartos.xinch.setting",
-      "default": false,
-      "group": "Tame"
-    },
-    {
-      "key": "tameXinchHardware",
-      "type": "boolean",
-      "title": "SmartOS/xinch hardware service",
-      "description": "Documented in ha-paneld's hardware notes, not verified on a panel here. Note the ethernet platform service is deliberately not offered — disabling it on a wired panel would strand it. Package: com.smartos.xinch.hardware",
+      "description": "Factory/QA leftover. Verified present on rk3576 and px30 panels here; this one is not in ha-paneld's profiles. Package: com.smatek.test",
       "default": false,
       "group": "Tame"
     },
     {
       "key": "tameTuyaTest",
       "type": "boolean",
-      "title": "Tuya device test app",
-      "description": "Documented in ha-paneld's hardware notes, not verified on a panel here. Package: com.tuya.devicetest",
+      "title": "Factory test: Tuya devicetest",
+      "description": "Tuya factory device-test app, in /odm so it persists across a factory reset. Diagnostic only. From ha-paneld's tpa10 profile. Package: com.tuya.devicetest",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameXinchSmartIot",
+      "type": "boolean",
+      "title": "Xinch SmartIoT control app",
+      "description": "SmartOS/Tuya IoT control app — redundant alongside Home Assistant. From ha-paneld's tpa10 profile. Package: com.smartos.xinch.smartiot",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameXinchSmartHome",
+      "type": "boolean",
+      "title": "Xinch smart-home control app",
+      "description": "SmartOS/Tuya smart-home control app — redundant on a Home Assistant panel. From ha-paneld's tpa10 profile. Package: com.smartos.xinch.smarthome",
+      "default": false,
+      "group": "Tame"
+    },
+    {
+      "key": "tameXinchMonitor",
+      "type": "boolean",
+      "title": "Xinch PerformanceMonitor",
+      "description": "Vendor diagnostic overlay app. Not needed in normal operation, and its overlay is the kind that lands on top of a dashboard. From ha-paneld's tpa10 profile. Package: com.smartos.xinch.monitor",
       "default": false,
       "group": "Tame"
     },
