@@ -321,5 +321,9 @@ public final class PackageManagementPlugin implements KioskPlugin {
             }
             RootShell.run(script.toString(), RootShell.COMMAND_TIMEOUT_MS);
         }
-    }
+            // Last, so anything above still has a shell to run in: ends
+        // the persistent root session rather than leaving a root
+        // shell alive for a plugin that is no longer running.
+        RootShell.shutdown();
+}
 }

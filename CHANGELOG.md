@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+- **One root shell per plugin instead of one per command.** Every root call used to spawn a fresh `su`, and Magisk shows its "granted Superuser rights" toast per request. The plugin now holds a single `su` session and writes commands to its stdin, so root is granted once per plugin start.
+- The APK installer keeps its own `su` process. It streams raw APK bytes through stdin, and the session multiplexes commands over one stdin using a text sentinel to find each reply's end — binary payload there would corrupt framing for every later command. Installing is a one-shot action anyway; it was the polling that made grants worth counting.
+- Commands are framed by a per-session random sentinel (`echo <token>:$?`), so exit codes and output read exactly as before. Each command runs in a subshell, so one containing `exit` ends that subshell rather than silently killing the session and costing root for the rest of the plugin's life.
+- A timeout or a dead shell closes the session and the next call opens a clean one. Late output from a timed-out command can't be told apart from the next command's, so resynchronising would be guesswork — it's killed instead. Failures cost one extra grant, never silent corruption.
+- The session ends with the plugin: `stop()` closes it, so disabling the plugin doesn't leave a root shell alive.
+- Tested against `sh` rather than `su`, which needs no root or device: the load-bearing assertion is that two commands report the same PID, since a regression to per-command spawning would only show up as toast spam on a panel.
+
 ## 0.5.0
 
 - **The WebView dropdown can now pick for itself.** A new **Recommended for this panel** option reads the panel's primary ABI and Android level from `getDeviceInfo` and resolves to the matching build at install time. Previously you had to know whether the panel was arm64 or arm 32-bit, and which Chromium version its Android release caps at, and get both right before downloading a quarter-gigabyte APK.

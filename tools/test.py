@@ -24,5 +24,6 @@ with tempfile.TemporaryDirectory(prefix='package-management-test-') as directory
     subprocess.run([tool('java'), '-ea', '-cp', directory, 'PackageManagementTest'], check=True)
     subprocess.run([tool('java'), '-ea', '-cp', directory, 'TameCatalogTest'], check=True)
     subprocess.run([tool('java'), '-ea', '-cp', directory, 'ManifestContractTest'], check=True)
+    subprocess.run([tool('java'), '-ea', '-cp', directory, 'RootShellSessionTest'], check=True)
 
 subprocess.run([sys.executable, str(root / 'tools/test_android_sdk.py')], check=True)
