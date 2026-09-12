@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+
+- **Fixes 0.3.0 and 0.4.0 being uninstallable.** The `webviewPreset` description was 488 characters against Kiosk Satellite's 400-character cap for setting descriptions, so the host rejected the entire manifest with "Invalid description" and greyed out **Trust and update**. Both releases were affected; 0.3.0 introduced it. The text is trimmed and the detail it carried lives in the README.
+- Added `test/ManifestContractTest.java`, which enforces the SDK 1 manifest contract locally — every length cap, pattern, count limit, and select-option rule mirrored from the host's `PluginManifest.kt`. The build only ever checked that the JSON parsed, which is why a size limit reached a panel. A failing check now names the setting, its actual length, and the limit, instead of surfacing as a disabled button and a three-word error.
+
 ## 0.4.0
 
 - **Correction: ha-paneld does maintain a curated package list, and this release ports it.** 0.2.0 and 0.3.0 both claimed it didn't — that was wrong, and the claim shaped the catalog. The list isn't in ha-paneld's documentation; it's in the `provisioning.packages` block of each device profile under `app/src/main/assets/device-profiles/`, with a desired state, importance rating, tags, and a note per package. Fourteen distinct packages across the profiles.
