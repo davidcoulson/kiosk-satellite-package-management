@@ -65,6 +65,12 @@ final class WebViewPresets {
     private static final String MIRROR =
         "https://github.com/maxlyth/ha-paneld/releases/download/webview-mirror/";
 
+    /** This author's own mirror, for Google-signed builds ha-paneld's does
+     *  not carry. Same pinning rationale: a download page hands out
+     *  session-bound URLs that expire, a release asset does not. */
+    private static final String OWN_MIRROR =
+        "https://github.com/davidcoulson/kiosk-satellite-apk-mirror/releases/download/webview-mirror/";
+
     /** A build, the hardware it suits, and the Android range it is the right
      *  answer for. {@code maxSdk} is Integer.MAX_VALUE where nothing caps it. */
     static final class Build {
@@ -88,7 +94,18 @@ final class WebViewPresets {
             return "";
         }
 
+        /** The package this build installs. A panel only upgrades from a
+         *  build sharing its current provider's package: the others are
+         *  different packages, so installing one adds a second WebView
+         *  that is not the provider rather than replacing anything. */
+        final String pkg;
+
         Build(String label, String url, String abi, int minSdk, int maxSdk) {
+            this(label, url, abi, minSdk, maxSdk, "com.android.webview");
+        }
+
+        Build(String label, String url, String abi, int minSdk, int maxSdk, String pkg) {
+            this.pkg = pkg;
             this.label = label;
             this.url = url;
             this.abi = abi;
@@ -106,16 +123,40 @@ final class WebViewPresets {
     // and the newer LineageOS one are installable: ha-paneld maps the TPA10
     // to Cromite, so Cromite is listed first and wins.
     private static final List<Build> BUILDS = Collections.unmodifiableList(Arrays.asList(
+        // Ordered so the first entry that suits a panel is the right answer
+        // for it, with the LineageOS builds first: they are
+        // com.android.webview, which is what ha-paneld provisions and what
+        // the panels tested here run, so they are the safe answer when the
+        // provider is unknown. A panel known to run Google's package skips
+        // past them on the package check in recommend() and lands on the
+        // Google builds below.
+        //
         // Android 8.1 caps here. ha-paneld's NSPanel Pro (px30) guidance, and
         // the version an NSPanel Pro tested here is already running.
         new Build("LineageOS 138.0.7204.63 - arm64, Android 8.1 (NSPanel Pro)",
             MIRROR + "lineageos-webview-138.0.7204.63.apk", "arm64-v8a", 26, 27),
         new Build("LineageOS 150.0.7871.63 - arm64, newer Android",
             MIRROR + "lineageos-webview-150.0.7871.63-arm64.apk", "arm64-v8a", 28, Integer.MAX_VALUE),
+        // 32-bit Android 11+, where both the Cromite build and the newer
+        // LineageOS one are installable: ha-paneld maps the TPA10 to Cromite,
+        // so Cromite is listed first and wins.
         new Build("Cromite 147.0.7727.56 - arm 32-bit, Android 11+ (TPA10)",
             MIRROR + "cromite-webview-147.0.7727.56.apk", "armeabi-v7a", 30, Integer.MAX_VALUE),
         new Build("LineageOS 150.0.7871.63 - arm 32-bit, newer Android",
-            MIRROR + "lineageos-webview-150.0.7871.63-arm.apk", "armeabi-v7a", 28, 29)));
+            MIRROR + "lineageos-webview-150.0.7871.63-arm.apk", "armeabi-v7a", 28, 29),
+        // Google-signed, for panels whose provider is already
+        // com.google.android.webview: newer than anything above, and the only
+        // option for such a panel, since a LineageOS build cannot replace a
+        // different package.
+        new Build("Google 153.0.8010.36 - arm64, Android 12L+",
+            OWN_MIRROR + "google-webview-153.0.8010.36.apk", "arm64-v8a", 32, Integer.MAX_VALUE,
+            "com.google.android.webview"),
+        // The last milestone that runs on Android 8-9: API 26-28 is below
+        // every later build's minSdk, which is why an NSPanel Pro caps there
+        // however current the rest of the panel is.
+        new Build("Google 138.0.7204.181 - arm64, Android 8-9",
+            OWN_MIRROR + "google-webview-138.0.7204.181.apk", "arm64-v8a", 26, 28,
+            "com.google.android.webview")));
 
     /** Dropdown options for the manifest: {@link #NONE}, {@link #AUTO}, then
      *  every build in catalog order. */
@@ -180,11 +221,34 @@ final class WebViewPresets {
      * not knowing what is installed is not a reason to recommend nothing.
      */
     static Build recommend(List<String> abis, int sdkInt, String installedVersion) {
+        return recommend(abis, sdkInt, installedVersion, null);
+    }
+
+    /**
+     * As above, and only ever recommends a build that can actually replace
+     * what the panel runs.
+     *
+     * A WebView build is only an upgrade for a panel already using its
+     * package. The LineageOS builds are {@code com.android.webview} and the
+     * Google ones {@code com.google.android.webview}: install the wrong one
+     * and Android adds a second WebView that is not the provider, changing
+     * nothing except 250MB of storage. An NSPanel Pro here runs the
+     * LineageOS package, so its recommendation must stay on that line
+     * however current the Google build for its API range is.
+     *
+     * An unknown provider recommends across all packages, as before.
+     */
+    static Build recommend(List<String> abis, int sdkInt, String installedVersion,
+                           String installedPackage) {
         if (abis == null || abis.isEmpty() || sdkInt <= 0) return null;
         String primary = abis.get(0);
         for (Build build : BUILDS) {
             if (!build.suits(primary, sdkInt)) continue;
             if (isNewer(installedVersion, build.version())) continue;
+            if (installedPackage != null && !installedPackage.isEmpty()
+                && !installedPackage.equals(build.pkg)) {
+                continue;
+            }
             return build;
         }
         return null;

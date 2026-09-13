@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0
+
+- **Catalogues two Google-signed builds**, mirrored with pinned URLs and published checksums: 153.0.8010.36 for Android 12L+, and 138.0.7204.181 — the last milestone that runs on Android 8-9, so a later patch than the 138.0.7204.63 already listed.
+- **Recommendations now respect the panel's WebView provider.** A build only upgrades a panel already using its package: the LineageOS builds are `com.android.webview`, the Google ones `com.google.android.webview`. Installing the wrong one adds a second WebView that is not the provider and changes nothing except 250 MB of storage. A panel on the LineageOS package keeps being offered LineageOS builds however current the Google one is.
+- An unknown provider falls back to the LineageOS builds, which is what ha-paneld provisions and what the panels this was tested on run.
+
 ## 0.9.0
 
 - **Never recommends a WebView build older than the one installed.** The catalogue is a fixed list and a panel is not: a panel here runs 153.0.8010.36 while the newest catalogued arm64 build is 150.0.7871.63, so "Recommended for this panel" was pointing at a downgrade — one Android refuses at the end of a 250 MB download.

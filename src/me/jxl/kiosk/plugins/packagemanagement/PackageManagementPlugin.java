@@ -225,8 +225,10 @@ public final class PackageManagementPlugin implements KioskPlugin {
 
         String picked = str(settings.get("webviewPreset"));
         if (WebViewPresets.AUTO.equals(picked)) {
-            String installed = installedVersionOnly(installedWebView());
-            WebViewPresets.Build match = WebViewPresets.recommend(abis, sdkInt, installed);
+            String installedFull = installedWebView();
+            String installed = installedVersionOnly(installedFull);
+            WebViewPresets.Build match = WebViewPresets.recommend(
+                abis, sdkInt, installed, installedPackageOnly(installedFull));
             if (match == null) {
                 // Distinguish "nothing here fits this panel" from "this panel
                 // has moved past everything here": the second is the normal
@@ -315,8 +317,9 @@ public final class PackageManagementPlugin implements KioskPlugin {
             String installed = installedWebView();
             line.append("\nWebView: ").append(installed == null
                 ? "could not read the installed build." : installed);
-            WebViewPresets.Build match =
-                WebViewPresets.recommend(abis, sdkInt, installedVersionOnly(installed));
+            WebViewPresets.Build match = WebViewPresets.recommend(
+                abis, sdkInt, installedVersionOnly(installed),
+                installedPackageOnly(installed));
             if (match != null) {
                 line.append("\nCatalogued build for this panel: ").append(match.label).append(".");
             } else if (installed != null) {
@@ -368,6 +371,15 @@ public final class PackageManagementPlugin implements KioskPlugin {
 
     /** Just the version out of what {@link #installedWebView} returns,
      *  which carries its provider package in brackets for the reader. */
+    /** The provider package out of what {@link #installedWebView} returns,
+     *  which carries it in brackets after the version. */
+    private static String installedPackageOnly(String installed) {
+        if (installed == null) return null;
+        int open = installed.indexOf('(');
+        int close = installed.indexOf(')', open + 1);
+        return open > 0 && close > open ? installed.substring(open + 1, close) : null;
+    }
+
     private static String installedVersionOnly(String installed) {
         if (installed == null) return null;
         int space = installed.indexOf(' ');

@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "package-management",
   "name": "Package Management",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "minAndroidSdk": 24,
   "entryClass": "me.jxl.kiosk.plugins.packagemanagement.PackageManagementPlugin",
   "description": "Install or uninstall an APK by URL, update the panel's System WebView, and neutralize intrusive vendor packages. Requires root; no vendor signature pinning or auto-update machinery \u2014 you choose what to install.",
@@ -61,7 +61,9 @@
       "options": [
         "None",
         "Recommended for this panel",
+        "Google 153.0.8010.36 - arm64, Android 12L+",
         "LineageOS 138.0.7204.63 - arm64, Android 8.1 (NSPanel Pro)",
+        "Google 138.0.7204.181 - arm64, Android 8-9",
         "LineageOS 150.0.7871.63 - arm64, newer Android",
         "Cromite 147.0.7727.56 - arm 32-bit, Android 11+ (TPA10)",
         "LineageOS 150.0.7871.63 - arm 32-bit, newer Android"

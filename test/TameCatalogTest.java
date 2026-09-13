@@ -237,6 +237,32 @@ public final class TameCatalogTest {
             "a panel past the catalogue is recommended nothing");
         assertTrue(rec3.invoke(null, java.util.Arrays.asList("arm64-v8a"), 34, "149.0.0.1") != null,
             "a panel behind the catalogue still gets its build");
+
+        // A build only upgrades a panel already using its package: the
+        // LineageOS builds are com.android.webview and the Google ones
+        // com.google.android.webview. Install the wrong one and Android
+        // adds a second WebView that is not the provider, changing nothing
+        // except 250MB of storage. The NSPanel Pro here runs the LineageOS
+        // package, which is why its recommendation must stay on that line.
+        Method rec4 = webview.getDeclaredMethod(
+            "recommend", java.util.List.class, int.class, String.class, String.class);
+        rec4.setAccessible(true);
+        Object googlePanel = rec4.invoke(null, Arrays.asList("arm64-v8a"), 34, "150.0.0.1",
+            "com.google.android.webview");
+        assertTrue(googlePanel != null
+            && field(googlePanel, "label").startsWith("Google 153"),
+            "a Google-provisioned modern panel is offered the Google build");
+        Object aospPanel = rec4.invoke(null, Arrays.asList("arm64-v8a"), 34, "149.0.0.1",
+            "com.android.webview");
+        assertTrue(aospPanel != null
+            && field(aospPanel, "label").startsWith("LineageOS 150"),
+            "a LineageOS-provisioned panel stays on the LineageOS line");
+        assertTrue(rec4.invoke(null, Arrays.asList("arm64-v8a"), 27, "138.0.7204.63",
+            "com.android.webview") == null,
+            "the NSPanel Pro is already on the newest build for its package");
+        Object unknown = rec4.invoke(null, Arrays.asList("arm64-v8a"), 34, null, null);
+        assertTrue(unknown != null && field(unknown, "label").startsWith("LineageOS"),
+            "an unknown provider falls back to the catalogue's own convention");
         System.out.println("PASS: tame catalog shape/uniqueness/validation, ethernet exclusion, "
             + "toggle selection semantics, WebView preset URLs and per-panel recommendation "
             + "(px30/rk3576/tpa10, primary-ABI preference, no-guess fallbacks), "
