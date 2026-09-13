@@ -302,11 +302,55 @@ public final class PackageManagementPlugin implements KioskPlugin {
         if (tamed > 0) line.append(" ").append(tamed).append(" package(s) tamed.");
         if (!hardwareLabel.isEmpty()) {
             line.append("\nPanel: ").append(hardwareLabel).append(".");
+            String installed = installedWebView();
+            line.append("\nWebView: ").append(installed == null
+                ? "could not read the installed build." : installed);
             WebViewPresets.Build match = WebViewPresets.recommend(abis, sdkInt);
-            line.append("\nWebView: ").append(match == null
-                ? "no catalogued build suits this panel." : match.label + ".");
+            if (match != null) {
+                line.append("\nCatalogued build for this panel: ").append(match.label).append(".");
+            }
         }
         host.status(line.toString(), false);
+    }
+
+    /**
+     * What the panel is actually running: the WebView provider package and
+     * its version, read from the system rather than inferred.
+     *
+     * This line used to print the *catalogued* build's label under a
+     * "WebView:" heading, which reads as the installed one and is not. On a
+     * panel running 152.0.7977.88 it reported "LineageOS 150.0.7871.63",
+     * because that was the newest build in the catalogue for that ABI --
+     * and it would have reported the same after an update that silently
+     * failed, which is the worse half of the bug.
+     *
+     * The provider is whatever {@code webview_provider} names, since a
+     * panel can be switched between providers; the two stock package names
+     * are the fallback when the setting is unset, and the name goes through
+     * the same validator as every other package this plugin shells out
+     * with.
+     */
+    private String installedWebView() {
+        String provider = PrivilegedShell.runOutput(
+            "settings get global webview_provider", RootShell.COMMAND_TIMEOUT_MS);
+        if (provider != null) provider = provider.trim();
+        // Same validator every other package name in this plugin goes
+        // through before it reaches a shell.
+        if (provider == null || provider.isEmpty() || "null".equals(provider)
+            || !PackageManagementMath.isValidPackageName(provider)) {
+            provider = null;
+        }
+        String[] candidates = provider != null
+            ? new String[]{provider}
+            : new String[]{"com.google.android.webview", "com.android.webview"};
+        for (String pkg : candidates) {
+            String out = PrivilegedShell.runOutput(
+                "dumpsys package " + pkg + " 2>/dev/null | grep -m1 versionName",
+                RootShell.COMMAND_TIMEOUT_MS);
+            String version = WebViewPresets.parseVersionName(out);
+            if (version != null) return version + " (" + pkg + ")";
+        }
+        return null;
     }
 
     private interface Task { void run() throws Exception; }

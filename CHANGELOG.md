@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0
+
+- **The status line reports the WebView that is installed, not the one the catalogue recommends.** It printed the recommended build's label under a "WebView:" heading, which reads as the installed version and is not: a panel running 152.0.7977.88 was reported as running "LineageOS 150.0.7871.63", simply because that was the newest catalogued build for its ABI. The provider package and its version are now read from the system, with the catalogued build shown separately on its own line.
+- The worse half of that bug: the old line would have reported exactly the same text after an update that silently failed, so it could never show you whether an update had worked.
+- The provider comes from `webview_provider` where set, falling back to the two stock package names, and goes through the same package-name validator as every other package this plugin shells out with.
+
 ## 0.7.0
 
 - **Taming and uninstalling no longer require root.** They are exactly what adb debloating is — `pm disable-user`, `pm enable`, `pm uninstall`, `am force-stop`, `appops set` all run as Android's shell user, verified on real hardware. A panel with Shizuku and no root now gets the whole vendor-taming half of this plugin, which is the half most people want.

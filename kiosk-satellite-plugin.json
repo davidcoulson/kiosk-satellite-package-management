@@ -3,10 +3,10 @@
   "apiVersion": 1,
   "id": "package-management",
   "name": "Package Management",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "minAndroidSdk": 24,
   "entryClass": "me.jxl.kiosk.plugins.packagemanagement.PackageManagementPlugin",
-  "description": "Install or uninstall an APK by URL, update the panel's System WebView, and neutralize intrusive vendor packages. Requires root; no vendor signature pinning or auto-update machinery — you choose what to install.",
+  "description": "Install or uninstall an APK by URL, update the panel's System WebView, and neutralize intrusive vendor packages. Requires root; no vendor signature pinning or auto-update machinery \u2014 you choose what to install.",
   "author": "David Coulson",
   "license": "Apache-2.0",
   "capabilities": [
@@ -26,7 +26,7 @@
       "key": "uninstallPreset",
       "type": "select",
       "title": "Uninstall: pick a known package",
-      "description": "Common vendor/test packages, so you don't have to type one. Run the Uninstall package action to apply. Anything typed into the field below takes priority over this pick. Uninstalling is not reversible without a factory reset or reflash — prefer taming if you only want an app to stop interfering.",
+      "description": "Common vendor/test packages, so you don't have to type one. Run the Uninstall package action to apply. Anything typed into the field below takes priority over this pick. Uninstalling is not reversible without a factory reset or reflash \u2014 prefer taming if you only want an app to stop interfering.",
       "options": [
         "None",
         "com.elclcd.otaupdater",
@@ -57,7 +57,7 @@
       "key": "webviewPreset",
       "type": "select",
       "title": "System WebView: known-good build",
-      "description": "Pick \"Recommended for this panel\" to let the plugin choose from the panel's own ABI and Android version. Builds are ha-paneld's, verified on real panels. An explicit pick overrides the recommendation; one whose ABI can't run here is refused. Not Google-signed — a panel that still gets WebView through Play should use Play. See the README.",
+      "description": "Pick \"Recommended for this panel\" to let the plugin choose from the panel's own ABI and Android version. Builds are ha-paneld's, verified on real panels. An explicit pick overrides the recommendation; one whose ABI can't run here is refused. Not Google-signed \u2014 a panel that still gets WebView through Play should use Play. See the README.",
       "options": [
         "None",
         "Recommended for this panel",
@@ -81,7 +81,7 @@
       "key": "tameOtaUpdater",
       "type": "boolean",
       "title": "elclcd OTA updater",
-      "description": "ELC \"Firmware Upgrade\", the vendor OTA updater. Disable to stop the panel auto-applying vendor firmware that re-adds bloat — and, on some images, re-enables ADB. Verified on rk3576; ha-paneld disables it on smt1019 and wf1589t. Package: com.elclcd.otaupdater",
+      "description": "ELC \"Firmware Upgrade\", the vendor OTA updater. Disable to stop the panel auto-applying vendor firmware that re-adds bloat \u2014 and, on some images, re-enables ADB. Verified on rk3576; ha-paneld disables it on smt1019 and wf1589t. Package: com.elclcd.otaupdater",
       "default": false,
       "group": "Tame"
     },
@@ -89,7 +89,7 @@
       "key": "tameKeepalive",
       "type": "boolean",
       "title": "elclcd keepalive service",
-      "description": "ELC \"CommonKeepAlive\", the vendor's process-resurrector — this is what undoes taming anything else, so tame it alongside whatever else you tame on these panels. Verified on rk3576; ha-paneld disables it on smt1019. Package: com.elclcd.commonkeepalive",
+      "description": "ELC \"CommonKeepAlive\", the vendor's process-resurrector \u2014 this is what undoes taming anything else, so tame it alongside whatever else you tame on these panels. Verified on rk3576; ha-paneld disables it on smt1019. Package: com.elclcd.commonkeepalive",
       "default": false,
       "group": "Tame"
     },
@@ -153,7 +153,7 @@
       "key": "tameXinchSmartIot",
       "type": "boolean",
       "title": "Xinch SmartIoT control app",
-      "description": "SmartOS/Tuya IoT control app — redundant alongside Home Assistant. From ha-paneld's tpa10 profile. Package: com.smartos.xinch.smartiot",
+      "description": "SmartOS/Tuya IoT control app \u2014 redundant alongside Home Assistant. From ha-paneld's tpa10 profile. Package: com.smartos.xinch.smartiot",
       "default": false,
       "group": "Tame"
     },
@@ -161,7 +161,7 @@
       "key": "tameXinchSmartHome",
       "type": "boolean",
       "title": "Xinch smart-home control app",
-      "description": "SmartOS/Tuya smart-home control app — redundant on a Home Assistant panel. From ha-paneld's tpa10 profile. Package: com.smartos.xinch.smarthome",
+      "description": "SmartOS/Tuya smart-home control app \u2014 redundant on a Home Assistant panel. From ha-paneld's tpa10 profile. Package: com.smartos.xinch.smarthome",
       "default": false,
       "group": "Tame"
     },

@@ -172,4 +172,19 @@ final class WebViewPresets {
     static List<Build> all() {
         return BUILDS;
     }
+
+    /** The version out of a dumpsys "versionName=..." line, or null when
+     *  the package is absent (dumpsys prints nothing) or the line is not
+     *  the shape expected. Trailing fields are dropped: some builds print
+     *  more on the same line. */
+    static String parseVersionName(String dumpsysLine) {
+        if (dumpsysLine == null) return null;
+        int at = dumpsysLine.indexOf("versionName=");
+        if (at < 0) return null;
+        String rest = dumpsysLine.substring(at + "versionName=".length()).trim();
+        if (rest.isEmpty()) return null;
+        int space = rest.indexOf(' ');
+        if (space > 0) rest = rest.substring(0, space);
+        return rest.isEmpty() || "null".equals(rest) ? null : rest;
+    }
 }

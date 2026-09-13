@@ -62,7 +62,24 @@ public final class PackageManagementTest {
         List<String> empty = (List<String>) parseTame.invoke(null, (Object) null);
         assertTrue(empty.isEmpty(), "null input parses to an empty list");
 
-        System.out.println("PASS: package name validation, HTTPS/redirect safety, critical-package protection, tame-list parsing.");
+
+        // The status line's WebView version is READ, not inferred: it used
+        // to print the catalogued build's label, which told a panel running
+        // 152.0.7977.88 that it was running 150.0.7871.63 -- and would have
+        // said the same after an update that silently failed.
+        Class<?> presets = Class.forName("me.jxl.kiosk.plugins.packagemanagement.WebViewPresets");
+        Method parse = presets.getDeclaredMethod("parseVersionName", String.class);
+        parse.setAccessible(true);
+        assertEquals("152.0.7977.88",
+            parse.invoke(null, "    versionName=152.0.7977.88"), "version read off a dumpsys line");
+        assertEquals("138.0.7204.63",
+            parse.invoke(null, "versionName=138.0.7204.63 versionCode=720406333"),
+            "trailing fields on the same line are dropped");
+        assertNull(parse.invoke(null, ""), "no output (package absent) is unknown, not a version");
+        assertNull(parse.invoke(null, (Object) null), "null is unknown");
+        assertNull(parse.invoke(null, "versionName="), "an empty value is unknown");
+        assertNull(parse.invoke(null, "Unable to find package"), "an error line is not a version");
+        System.out.println("PASS: package name validation, HTTPS/redirect safety, critical-package protection, tame-list parsing, installed-WebView version parsing.");
     }
 
     private static void assertTrue(boolean condition, String message) {
