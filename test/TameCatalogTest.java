@@ -211,6 +211,32 @@ public final class TameCatalogTest {
             "the replaced preset dropdown is gone from the manifest");
         assertTrue(manifest.contains("\"webviewPreset\""), "manifest declares the WebView dropdown");
 
+
+        // A catalogue is a fixed list and a panel is not: one panel here runs
+        // 153.0.8010.36 while the newest catalogued arm64 build is
+        // 150.0.7871.63, so the unguarded recommendation pointed at a
+        // downgrade Android refuses anyway.
+        Method isNewer = webview.getDeclaredMethod("isNewer", String.class, String.class);
+        isNewer.setAccessible(true);
+        assertTrue((Boolean) isNewer.invoke(null, "153.0.8010.36", "150.0.7871.63"),
+            "a newer milestone is newer");
+        assertTrue((Boolean) isNewer.invoke(null, "150.0.7871.63", "150.0.7871.63"),
+            "the same build is not worth recommending");
+        assertTrue(!(Boolean) isNewer.invoke(null, "138.0.7204.63", "150.0.7871.63"),
+            "an older milestone is not newer");
+        assertTrue(!(Boolean) isNewer.invoke(null, "138.0.7204.63", "138.0.7204.181"),
+            "the patch field is compared numerically, not as text");
+        assertTrue(!(Boolean) isNewer.invoke(null, null, "150.0.7871.63"),
+            "an unreadable installed version recommends as before");
+        assertTrue(!(Boolean) isNewer.invoke(null, "not-a-version", "150.0.7871.63"),
+            "an unparseable version recommends as before");
+
+        Method rec3 = webview.getDeclaredMethod("recommend", java.util.List.class, int.class, String.class);
+        rec3.setAccessible(true);
+        assertTrue(rec3.invoke(null, java.util.Arrays.asList("arm64-v8a"), 34, "153.0.8010.36") == null,
+            "a panel past the catalogue is recommended nothing");
+        assertTrue(rec3.invoke(null, java.util.Arrays.asList("arm64-v8a"), 34, "149.0.0.1") != null,
+            "a panel behind the catalogue still gets its build");
         System.out.println("PASS: tame catalog shape/uniqueness/validation, ethernet exclusion, "
             + "toggle selection semantics, WebView preset URLs and per-panel recommendation "
             + "(px30/rk3576/tpa10, primary-ABI preference, no-guess fallbacks), "

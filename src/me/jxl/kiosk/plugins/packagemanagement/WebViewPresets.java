@@ -74,6 +74,20 @@ final class WebViewPresets {
         final int minSdk;
         final int maxSdk;
 
+        /** The dotted version out of the label, e.g. "150.0.7871.63" from
+         *  "LineageOS 150.0.7871.63 - arm64, newer Android". The label is
+         *  the catalogue's own source of truth for the version, so the
+         *  version is read from it rather than duplicated beside it. */
+        String version() {
+            for (String word : label.split("[ -]")) {
+                if (word.length() > 2 && word.indexOf('.') > 0
+                    && Character.isDigit(word.charAt(0))) {
+                    return word;
+                }
+            }
+            return "";
+        }
+
         Build(String label, String url, String abi, int minSdk, int maxSdk) {
             this.label = label;
             this.url = url;
@@ -150,12 +164,61 @@ final class WebViewPresets {
      *  armeabi-v7a too, and picking a 32-bit WebView for it would install
      *  something that runs but is not what the platform wants. */
     static Build recommend(List<String> abis, int sdkInt) {
+        return recommend(abis, sdkInt, null);
+    }
+
+    /**
+     * As above, but never recommends a build the panel is already past.
+     *
+     * The catalogue is a fixed list and a panel is not: one here runs
+     * 153.0.8010.36 while the newest catalogued build for its ABI is
+     * 150.0.7871.63, so the unguarded recommendation was pointing at a
+     * downgrade -- which Android refuses anyway, making it advice that
+     * could only ever waste someone's time.
+     *
+     * An unreadable or unparseable installed version recommends as before:
+     * not knowing what is installed is not a reason to recommend nothing.
+     */
+    static Build recommend(List<String> abis, int sdkInt, String installedVersion) {
         if (abis == null || abis.isEmpty() || sdkInt <= 0) return null;
         String primary = abis.get(0);
         for (Build build : BUILDS) {
-            if (build.suits(primary, sdkInt)) return build;
+            if (!build.suits(primary, sdkInt)) continue;
+            if (isNewer(installedVersion, build.version())) continue;
+            return build;
         }
         return null;
+    }
+
+    /** True when [installed] is a version at least as new as [candidate].
+     *  Either being absent or unparseable answers false -- an unknown
+     *  cannot be shown to be newer. */
+    static boolean isNewer(String installed, String candidate) {
+        int[] a = parts(installed);
+        int[] b = parts(candidate);
+        if (a == null || b == null) return false;
+        for (int i = 0; i < Math.max(a.length, b.length); i++) {
+            int x = i < a.length ? a[i] : 0;
+            int y = i < b.length ? b[i] : 0;
+            if (x != y) return x > y;
+        }
+        return true;   // identical: already on it, so not worth recommending
+    }
+
+    private static int[] parts(String version) {
+        if (version == null) return null;
+        String trimmed = version.trim();
+        if (trimmed.isEmpty()) return null;
+        String[] bits = trimmed.split("\\.");
+        int[] out = new int[bits.length];
+        for (int i = 0; i < bits.length; i++) {
+            try {
+                out[i] = Integer.parseInt(bits[i]);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return out;
     }
 
     /** Whether a panel can install a labelled build at all — the build's ABI

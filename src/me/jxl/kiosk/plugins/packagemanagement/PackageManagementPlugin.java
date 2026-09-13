@@ -225,11 +225,21 @@ public final class PackageManagementPlugin implements KioskPlugin {
 
         String picked = str(settings.get("webviewPreset"));
         if (WebViewPresets.AUTO.equals(picked)) {
-            WebViewPresets.Build match = WebViewPresets.recommend(abis, sdkInt);
+            String installed = installedVersionOnly(installedWebView());
+            WebViewPresets.Build match = WebViewPresets.recommend(abis, sdkInt, installed);
             if (match == null) {
-                host.status(abis.isEmpty()
-                    ? "Can't recommend a WebView build: this Kiosk Satellite build doesn't report panel hardware. Pick one manually."
-                    : "No catalogued WebView build suits this panel (" + hardwareLabel + "). Pick one manually or use the URL field.", true);
+                // Distinguish "nothing here fits this panel" from "this panel
+                // has moved past everything here": the second is the normal
+                // state of a panel someone has kept current, and reporting it
+                // as no suitable build would send them looking for a problem.
+                boolean pastCatalogue = installed != null
+                    && WebViewPresets.recommend(abis, sdkInt) != null;
+                host.status(pastCatalogue
+                    ? "This panel already runs " + installed
+                        + ", newer than any catalogued build. Nothing to install."
+                    : abis.isEmpty()
+                        ? "Can't recommend a WebView build: this Kiosk Satellite build doesn't report panel hardware. Pick one manually."
+                        : "No catalogued WebView build suits this panel (" + hardwareLabel + "). Pick one manually or use the URL field.", true);
                 return "";
             }
             host.status("Installing the build for this panel: " + match.label, false);
@@ -305,9 +315,12 @@ public final class PackageManagementPlugin implements KioskPlugin {
             String installed = installedWebView();
             line.append("\nWebView: ").append(installed == null
                 ? "could not read the installed build." : installed);
-            WebViewPresets.Build match = WebViewPresets.recommend(abis, sdkInt);
+            WebViewPresets.Build match =
+                WebViewPresets.recommend(abis, sdkInt, installedVersionOnly(installed));
             if (match != null) {
                 line.append("\nCatalogued build for this panel: ").append(match.label).append(".");
+            } else if (installed != null) {
+                line.append("\nNo catalogued build is newer than this.");
             }
         }
         host.status(line.toString(), false);
@@ -351,6 +364,14 @@ public final class PackageManagementPlugin implements KioskPlugin {
             if (version != null) return version + " (" + pkg + ")";
         }
         return null;
+    }
+
+    /** Just the version out of what {@link #installedWebView} returns,
+     *  which carries its provider package in brackets for the reader. */
+    private static String installedVersionOnly(String installed) {
+        if (installed == null) return null;
+        int space = installed.indexOf(' ');
+        return space > 0 ? installed.substring(0, space) : installed;
     }
 
     private interface Task { void run() throws Exception; }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0
+
+- **Never recommends a WebView build older than the one installed.** The catalogue is a fixed list and a panel is not: a panel here runs 153.0.8010.36 while the newest catalogued arm64 build is 150.0.7871.63, so "Recommended for this panel" was pointing at a downgrade — one Android refuses at the end of a 250 MB download.
+- A panel past the catalogue now says so plainly ("already runs X, newer than any catalogued build"), which is distinct from "no catalogued build suits this panel" — the first is a panel someone has kept current, the second is a gap in the catalogue, and reading one as the other sends you looking for the wrong problem.
+- An unreadable or unparseable installed version recommends exactly as before. Not knowing what is installed is not a reason to recommend nothing.
+- An explicit preset pick or URL is untouched: overriding on purpose stays possible, including installing something older.
+
 ## 0.8.0
 
 - **The status line reports the WebView that is installed, not the one the catalogue recommends.** It printed the recommended build's label under a "WebView:" heading, which reads as the installed version and is not: a panel running 152.0.7977.88 was reported as running "LineageOS 150.0.7871.63", simply because that was the newest catalogued build for its ABI. The provider package and its version are now read from the system, with the catalogued build shown separately on its own line.
