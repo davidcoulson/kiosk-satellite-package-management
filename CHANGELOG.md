@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Plugin 0.10.1: adds an icon for Community Plugins and Browse plugins.
+
 ## 0.10.0
 
 - **Catalogues two Google-signed builds**, mirrored with pinned URLs and published checksums: 153.0.8010.36 for Android 12L+, and 138.0.7204.181 — the last milestone that runs on Android 8-9, so a later patch than the 138.0.7204.63 already listed.
